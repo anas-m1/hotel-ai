@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS hotels;
+DROP TYPE  IF EXISTS hotel_rating;

@@ -1,0 +1,10 @@
+go 1.23
+
+use (
+	./services/booking-ops
+	./services/hotel-inventory
+	./services/pricing-engine
+	./services/search
+	./services/analytics
+	./services/fraud-detection
+)

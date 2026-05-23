@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go *)",
+      "Bash(golangci-lint *)",
+      "Bash(sqlc *)",
+      "Bash(uv *)",
+      "Bash(python *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(docker *)",
+      "Bash(docker compose *)",
+      "Bash(docker-compose *)",
+      "Bash(terraform *)",
+      "Bash(psql *)",
+      "Bash(redis-cli *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git log *)",
+      "Bash(git commit *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "go vet ./... 2>&1 | tail -5; uv run ruff check . 2>&1 | tail -5"
+          }
+        ]
+      }
+    ]
+  }
+}
