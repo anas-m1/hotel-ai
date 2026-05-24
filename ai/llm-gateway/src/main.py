@@ -3,7 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from .config import settings
-from .router import chat, models
+from .router import chat, models, usage
 
 structlog.configure(
     processors=[
@@ -25,6 +25,7 @@ app = FastAPI(
 
 app.include_router(chat.router, prefix="/v1")
 app.include_router(models.router, prefix="/v1")
+app.include_router(usage.router, prefix="/v1")
 
 
 @app.get("/healthz")
