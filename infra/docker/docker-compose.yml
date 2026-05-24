@@ -41,6 +41,17 @@ services:
       postgres:
         condition: service_healthy
 
+  llm-gateway:
+    build:
+      context: ../../ai/llm-gateway
+      dockerfile: Dockerfile
+    env_file: ./llm-gateway.env
+    ports:
+      - "8090:8090"
+    volumes:
+      # Cost log persisted on the host so you can inspect it without exec-ing the container
+      - llm_usage:/tmp
+
   # ── One-off migration runners ─────────────────────────────────────────────
   # These are NOT started by default. Run them explicitly when deploying:
   #
@@ -77,3 +88,4 @@ services:
 
 volumes:
   postgres_data:
+  llm_usage:
