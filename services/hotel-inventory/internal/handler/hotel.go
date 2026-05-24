@@ -6,13 +6,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"github.com/hotel-ai/hotel-inventory/internal/config"
 	"github.com/hotel-ai/hotel-inventory/internal/domain"
 	"github.com/hotel-ai/hotel-inventory/internal/repository"
 )
 
-func mountHotelRoutes(r chi.Router, repo repository.HotelRepository) {
+func mountHotelRoutes(r chi.Router, repo repository.HotelRepository, cfg config.Config) {
 	r.Get("/hotels/{code}", getHotel(repo))
-	r.Get("/hotels", listHotels(repo))
+	r.Get("/hotels", listHotels(repo, cfg))
 	r.Put("/hotels/{code}", upsertHotel(repo))
 }
 
@@ -32,9 +33,9 @@ func getHotel(repo repository.HotelRepository) http.HandlerFunc {
 //	?city=NYC           → ListByCity
 //	?rating=four_star   → ListByRating
 //	?q=beach+resort     → full-text search
-func listHotels(repo repository.HotelRepository) http.HandlerFunc {
+func listHotels(repo repository.HotelRepository, cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		limit, offset := parsePagination(r)
+		limit, offset := parsePagination(r, cfg)
 		q := r.URL.Query()
 
 		var hotels []domain.Hotel

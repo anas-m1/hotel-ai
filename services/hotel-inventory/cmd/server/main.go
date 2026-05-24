@@ -5,37 +5,30 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/hotel-ai/hotel-inventory/internal/config"
 	"github.com/hotel-ai/hotel-inventory/internal/handler"
 	"github.com/hotel-ai/hotel-inventory/internal/repository"
 	db "github.com/hotel-ai/hotel-inventory/internal/repository/db"
 )
 
 func main() {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		log.Fatal("DATABASE_URL not set")
-	}
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	cfg := config.Load()
 
 	ctx := context.Background()
 
-	cfg, err := pgxpool.ParseConfig(dsn)
+	poolCfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("pgxpool.ParseConfig: %v", err)
 	}
 	// Use simple protocol so NUMERIC columns are sent/received as text,
 	// which maps cleanly to Go string without pgtype.Numeric wrappers.
-	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+	poolCfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, poolCfg)
 	if err != nil {
 		log.Fatalf("pgxpool.NewWithConfig: %v", err)
 	}
@@ -50,9 +43,9 @@ func main() {
 	rooms := repository.NewRoomRepository(queries)
 	locations := repository.NewLocationRepository(queries)
 
-	router := handler.NewRouter(hotels, rooms, locations)
+	router := handler.NewRouter(cfg, hotels, rooms, locations)
 
-	addr := fmt.Sprintf(":%s", port)
+	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("hotel-inventory listening on %s", addr)
 	if err := http.ListenAndServe(addr, router); err != nil {
 		log.Fatalf("ListenAndServe: %v", err)

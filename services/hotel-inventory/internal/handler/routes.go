@@ -9,11 +9,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/hotel-ai/hotel-inventory/internal/config"
 	"github.com/hotel-ai/hotel-inventory/internal/domain"
 	"github.com/hotel-ai/hotel-inventory/internal/repository"
 )
 
-func NewRouter(hotels repository.HotelRepository, rooms repository.RoomRepository, locations repository.LocationRepository) http.Handler {
+func NewRouter(cfg config.Config, hotels repository.HotelRepository, rooms repository.RoomRepository, locations repository.LocationRepository) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -26,7 +27,7 @@ func NewRouter(hotels repository.HotelRepository, rooms repository.RoomRepositor
 
 	r.Route("/v1", func(r chi.Router) {
 		mountLocationRoutes(r, locations)
-		mountHotelRoutes(r, hotels)
+		mountHotelRoutes(r, hotels, cfg)
 		mountRoomRoutes(r, rooms)
 	})
 
@@ -56,10 +57,10 @@ func mapDomainError(w http.ResponseWriter, err error) {
 	}
 }
 
-func parsePagination(r *http.Request) (limit, offset int32) {
-	limit = 20
+func par sePagination(r *http.Request, cfg config.Config) (limit, offset int32) {
+	limit = cfg.PaginationDefault
 	offset = 0
-	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && v <= 100 {
+	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && int32(v) <= cfg.PaginationMax {
 		limit = int32(v)
 	}
 	if v, err := strconv.Atoi(r.URL.Query().Get("offset")); err == nil && v >= 0 {

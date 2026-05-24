@@ -8,15 +8,16 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/hotel-ai/booking-ops/internal/config"
 	"github.com/hotel-ai/booking-ops/internal/domain"
 	"github.com/hotel-ai/booking-ops/internal/repository"
 )
 
-func mountBookingRoutes(r chi.Router, bookings repository.BookingRepository, events repository.BookingEventRepository) {
+func mountBookingRoutes(r chi.Router, bookings repository.BookingRepository, events repository.BookingEventRepository, cfg config.Config) {
 	r.Post("/bookings", createBooking(bookings, events))
 	r.Get("/bookings/{id}", getBooking(bookings, events))
 	r.Post("/bookings/{id}/status", updateBookingStatus(bookings, events))
-	r.Get("/guests/{id}/bookings", listBookingsByGuest(bookings))
+	r.Get("/guests/{id}/bookings", listBookingsByGuest(bookings, cfg))
 	r.Get("/hotels/{code}/bookings", listBookingsByHotel(bookings))
 	r.Get("/availability", checkAvailability(bookings))
 }
@@ -161,14 +162,14 @@ func updateBookingStatus(bookings repository.BookingRepository, events repositor
 	}
 }
 
-func listBookingsByGuest(bookings repository.BookingRepository) http.HandlerFunc {
+func listBookingsByGuest(bookings repository.BookingRepository, cfg config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(chi.URLParam(r, "id"))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid guest id")
 			return
 		}
-		limit, offset := parsePagination(r)
+		limit, offset := parsePagination(r, cfg)
 		list, err := bookings.ListByGuest(r.Context(), id, limit, offset)
 		if err != nil {
 			mapDomainError(w, err)
