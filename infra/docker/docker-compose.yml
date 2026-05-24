@@ -1,19 +1,79 @@
 services:
+
+  # ── Infrastructure ────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: hotel
       POSTGRES_PASSWORD: hotel
-      POSTGRES_DB: hotel_inventory
+      POSTGRES_DB: hotel_inventory   # default DB; init-db.sh creates additional ones
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U hotel -d hotel_inventory"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ── Go microservices ──────────────────────────────────────────────────────
+  hotel-inventory:
+    build:
+      context: ../../services/hotel-inventory
+      dockerfile: Dockerfile
+    env_file: ./hotel-inventory.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  booking-ops:
+    build:
+      context: ../../services/booking-ops
+      dockerfile: Dockerfile
+    env_file: ./booking-ops.env
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── One-off migration runners ─────────────────────────────────────────────
+  # These are NOT started by default. Run them explicitly when deploying:
+  #
+  #   docker compose run --rm migrate-hotel-inventory
+  #   docker compose run --rm migrate-booking-ops
+  #
+  # They exit immediately after applying migrations.
+  # For rollback, override the command: docker compose run --rm migrate-hotel-inventory down
+  migrate-hotel-inventory:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ../../services/hotel-inventory/db/migrations:/migrations:ro
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://hotel:hotel@postgres:5432/hotel_inventory?sslmode=disable"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["migrate"]
+
+  migrate-booking-ops:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ../../services/booking-ops/db/migrations:/migrations:ro
+    command:
+      - "-path=/migrations"
+      - "-database=postgres://hotel:hotel@postgres:5432/booking_ops?sslmode=disable"
+      - "up"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["migrate"]
 
 volumes:
   postgres_data:

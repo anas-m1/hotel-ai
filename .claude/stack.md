@@ -61,5 +61,7 @@
 
 - **Start local stack:** `docker compose -f infra/docker/docker-compose.yml up -d`
 - **Stop stack:** `docker compose -f infra/docker/docker-compose.yml down`
-- **DB migrations:** `cd services/{name} && sqlc generate && go run cmd/migrate/main.go`
+- **DB migrations (local, no Docker):** `cd services/{name} && DATABASE_URL=... go run cmd/migrate/main.go up`
+- **DB migrations (Docker):** `docker compose -f infra/docker/docker-compose.yml --profile migrate run --rm migrate-{name}`
 - **Terraform plan:** `cd infra/terraform && terraform plan`
+- **Env setup:** copy `infra/docker/*.env.example` → `infra/docker/*.env`, fill in values

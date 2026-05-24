@@ -1,2 +1,11 @@
+# Secrets and local env overrides — never commit
 .env
 .env.*
+infra/docker/*.env
+
+# Go build artifacts
+bin/
+*.exe
+
+# sqlc generated output — regenerate with `sqlc generate`
+**/internal/repository/db/
