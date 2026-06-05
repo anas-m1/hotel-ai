@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/hotel-ai/booking-ops/internal/config"
 	"github.com/hotel-ai/booking-ops/internal/handler"
@@ -41,7 +42,10 @@ func main() {
 		log.Fatalf("db ping: %v", err)
 	}
 
-	queries := db.New(pool)
+	sqlDB := stdlib.OpenDBFromPool(pool)
+	defer sqlDB.Close()
+
+	queries := db.New(sqlDB)
 	guests := repository.NewGuestRepository(queries)
 	bookings := repository.NewBookingRepository(queries)
 	events := repository.NewBookingEventRepository(queries)

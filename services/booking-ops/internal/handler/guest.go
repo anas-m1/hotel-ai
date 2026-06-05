@@ -14,6 +14,7 @@ import (
 func mountGuestRoutes(r chi.Router, repo repository.GuestRepository) {
 	r.Post("/guests", upsertGuest(repo))
 	r.Get("/guests/{id}", getGuest(repo))
+	r.Get("/guests/by-email/{email}", getGuestByEmail(repo))
 }
 
 func upsertGuest(repo repository.GuestRepository) http.HandlerFunc {
@@ -44,6 +45,22 @@ func getGuest(repo repository.GuestRepository) http.HandlerFunc {
 			return
 		}
 		guest, err := repo.GetByID(r.Context(), id)
+		if err != nil {
+			mapDomainError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, guest)
+	}
+}
+
+func getGuestByEmail(repo repository.GuestRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		email := chi.URLParam(r, "email")
+		if email == "" {
+			writeError(w, http.StatusBadRequest, "email is required")
+			return
+		}
+		guest, err := repo.GetByEmail(r.Context(), email)
 		if err != nil {
 			mapDomainError(w, err)
 			return

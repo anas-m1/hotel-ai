@@ -57,7 +57,7 @@ func mapDomainError(w http.ResponseWriter, err error) {
 	}
 }
 
-func par sePagination(r *http.Request, cfg config.Config) (limit, offset int32) {
+func parsePagination(r *http.Request, cfg config.Config) (limit, offset int32) {
 	limit = cfg.PaginationDefault
 	offset = 0
 	if v, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && v > 0 && int32(v) <= cfg.PaginationMax {

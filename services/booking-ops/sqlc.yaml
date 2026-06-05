@@ -22,7 +22,23 @@ sql:
           - db_type: "pg_catalog.numeric"
             nullable: true
             go_type:
-              spec: "*string"
+              type: "string"
+              pointer: true
+          - db_type: "text"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          - db_type: "pg_catalog.bpchar"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+          - db_type: "pg_catalog.varchar"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
           - db_type: "jsonb"
             nullable: false
             go_type:

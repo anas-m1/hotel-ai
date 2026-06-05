@@ -279,6 +279,59 @@ cd services/booking-ops   && sqlc generate && go mod tidy
 
 ---
 
+## Editable install with src layout: dev-mode-dirs over packages
+
+**Question:** The package uses a `src/` layout (`src/agent/`, `src/router/`, `src/memory/`). How to make editable installs (`pip install -e`) resolve `import agent` correctly?
+
+**Decision:** Add `dev-mode-dirs = ["src"]` to `[tool.hatch.build.targets.wheel]` in `pyproject.toml`.
+
+**Problem:**
+- `packages = ["src"]` tells hatchling to scan `src/` for Python packages during *build*, but doesn't help editable installs
+- Without `dev-mode-dirs`, the editable install's `.pth` file adds the project root to `sys.path`, but `agent` lives at `src/agent/` — invisible
+- `pip install -e` without hatchling's `editables` library available produces the same broken `.pth`
+
+**Why not `packages = ["agent", "router", "memory"]`:**
+- These don't exist at the project root; they're under `src/`. Would need `["src/agent", "src/router", "src/memory"]`
+- `dev-mode-dirs` is cleaner — tells hatchling: "add `src/` to `sys.path` during dev mode"
+
+**Why not just add `src/` manually to `PYTHONPATH`:**
+- Not portable — every developer and CI environment would need to know
+- The build system (pyproject.toml) should own this configuration
+
+**Why not a non-src layout:**
+- src layout is standard for Python projects — prevents accidental imports of `agent` from tests running in the project root
+- The tradeoff is worth it: `dev-mode-dirs` is a one-line config fix
+
+**Tradeoff accepted:** Requires `editables` library at install time (hatchling build dependency). Pip handles this automatically when building the editable wheel — only an issue when using `--no-build-isolation` without pre-installing `editables`.
+
+---
+
+## Relative imports in src layout: use absolute imports
+
+**Question:** The `agent` package uses `from ..config import settings` to import the `config` module from the parent package. When the package is installed as editable, `agent` becomes a top-level package. `..config` tries to go above the top-level package, which Python forbids. How to fix?
+
+**Decision:** Change `from ..config import settings` → `from config import settings` in all 4 files that use it.
+
+**Why this works:**
+- `dev-mode-dirs = ["src"]` adds `src/` to `sys.path`
+- `config.py` lives at `src/config.py`, so `import config` resolves directly
+
+**Alternatives considered:**
+- Make `agent` a proper subpackage of a parent package (e.g., move to `booking_assistant.agent`) — scope creep, would break existing imports throughout the codebase
+- Add `src/` to `sys.path` at runtime in every entry point — fragile, not portable
+
+**Tradeoff accepted:** If someone runs code without the editable install (e.g., bare `python src/main.py`), `import config` will fail unless `PYTHONPATH=src` is set. Mitigation: all production entry points use the installed package (via Docker), not direct execution.
+
+---
+
+## pytest-asyncio for async test functions
+
+**Decision:** Added `@pytest.mark.asyncio` decorator to async test functions instead of relying on auto-detection.
+
+**Context:** pytest-asyncio 1.0+ defaults to STRICT mode, which requires `@pytest.mark.asyncio` on every async test. The plugin is listed as `asyncio: mode=Mode.STRICT`.
+
+---
+
 ## Double-booking prevention: exclusion constraint over application locking
 
 **Question:** The createBooking handler does a SELECT COUNT (availability check) then an INSERT — two separate statements. Two concurrent requests can both see "available" and both insert, creating a double booking. Neither optimistic nor pessimistic application-level locking fixes this cleanly for INSERTs.

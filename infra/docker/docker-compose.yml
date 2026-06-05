@@ -71,6 +71,18 @@ services:
       # Cost log persisted on the host so you can inspect it without exec-ing the container
       - llm_usage:/tmp
 
+  booking-assistant:
+    build:
+      context: ../../ai/booking-assistant
+      dockerfile: Dockerfile
+    env_file: ./booking-assistant.env
+    ports:
+      - "8092:8092"
+    depends_on:
+      - llm-gateway
+      - hotel-inventory
+      - booking-ops
+
   # ── One-off migration runners ─────────────────────────────────────────────
   # These are NOT started by default. Run them explicitly when deploying:
   #
