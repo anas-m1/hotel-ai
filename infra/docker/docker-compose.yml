@@ -49,6 +49,44 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  # Kafka in KRaft mode (no ZooKeeper)
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # Kafka UI — browse topics and messages at http://localhost:9000
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.2
+    environment:
+      KAFKA_BROKERCONNECT: kafka:9092
+    ports:
+      - "9000:9000"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
   rag-pipeline:
     build:
       context: ../../ai/rag-pipeline
@@ -82,6 +120,28 @@ services:
       - llm-gateway
       - hotel-inventory
       - booking-ops
+
+  multi-agent:
+    build:
+      context: ../../ai/multi-agent
+      dockerfile: Dockerfile
+    env_file: ./multi-agent.env
+    ports:
+      - "8093:8093"
+    volumes:
+      # shared/events/ schemas available at /app/shared inside the container
+      - ../../shared:/app/shared:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+      llm-gateway:
+        condition: service_started
+      booking-ops:
+        condition: service_started
+      hotel-inventory:
+        condition: service_started
+      rag-pipeline:
+        condition: service_started
 
   # ── One-off migration runners ─────────────────────────────────────────────
   # These are NOT started by default. Run them explicitly when deploying:
@@ -121,3 +181,4 @@ volumes:
   postgres_data:
   qdrant_data:
   llm_usage:
+  kafka_data:
