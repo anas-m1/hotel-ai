@@ -143,6 +143,27 @@ services:
       rag-pipeline:
         condition: service_started
 
+  # ── MCP servers (Phase 6) ─────────────────────────────────────────────────
+  mcp-hotel-inventory:
+    build:
+      context: ../../mcp/hotel-inventory
+      dockerfile: Dockerfile
+    env_file: ./mcp-hotel-inventory.env
+    ports:
+      - "8100:8100"
+    depends_on:
+      - hotel-inventory
+
+  mcp-booking-ops:
+    build:
+      context: ../../mcp/booking-ops
+      dockerfile: Dockerfile
+    env_file: ./mcp-booking-ops.env
+    ports:
+      - "8101:8101"
+    depends_on:
+      - booking-ops
+
   # ── One-off migration runners ─────────────────────────────────────────────
   # These are NOT started by default. Run them explicitly when deploying:
   #
