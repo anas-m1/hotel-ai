@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotel-inventory
+  namespace: hotel-ai
+  labels:
+    app: hotel-inventory
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hotel-inventory
+  template:
+    metadata:
+      labels:
+        app: hotel-inventory
+    spec:
+      containers:
+        - name: hotel-inventory
+          image: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/hotel-ai-ENV/hotel-inventory:IMAGE_TAG
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: hotel-inventory-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotel-inventory
+  namespace: hotel-ai
+spec:
+  selector:
+    app: hotel-inventory
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hotel-inventory
+  namespace: hotel-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hotel-inventory
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

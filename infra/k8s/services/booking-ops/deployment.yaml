@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-ops
+  namespace: hotel-ai
+  labels:
+    app: booking-ops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: booking-ops
+  template:
+    metadata:
+      labels:
+        app: booking-ops
+    spec:
+      containers:
+        - name: booking-ops
+          image: ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/hotel-ai-ENV/booking-ops:IMAGE_TAG
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - secretRef:
+                name: booking-ops-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-ops
+  namespace: hotel-ai
+spec:
+  selector:
+    app: booking-ops
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: booking-ops
+  namespace: hotel-ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: booking-ops
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

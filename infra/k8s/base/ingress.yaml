@@ -1,0 +1,44 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hotel-ai
+  namespace: hotel-ai
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /v1/hotels
+            pathType: Prefix
+            backend:
+              service:
+                name: hotel-inventory
+                port:
+                  number: 8080
+          - path: /v1/bookings
+            pathType: Prefix
+            backend:
+              service:
+                name: booking-ops
+                port:
+                  number: 8081
+          - path: /v1/chat
+            pathType: Prefix
+            backend:
+              service:
+                name: booking-assistant
+                port:
+                  number: 8092
+          - path: /v1/search
+            pathType: Prefix
+            backend:
+              service:
+                name: knowledge-graph
+                port:
+                  number: 8094
