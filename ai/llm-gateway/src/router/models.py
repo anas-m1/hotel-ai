@@ -9,11 +9,18 @@ router = APIRouter()
 # Curated list of models this gateway is configured to route.
 # Extend as you add provider keys.
 _SUPPORTED_MODELS = [
+    # Groq — free tier, recommended for local dev
+    {"id": "groq/llama-3.3-70b-versatile", "provider": "groq"},
+    {"id": "groq/llama-3.1-70b-versatile", "provider": "groq"},
+    {"id": "groq/llama-3.1-8b-instant", "provider": "groq"},
+    {"id": "groq/mixtral-8x7b-32768", "provider": "groq"},
+    # Anthropic
     {"id": "claude-sonnet-4-6", "provider": "anthropic"},
-    {"id": "claude-opus-4-7", "provider": "anthropic"},
     {"id": "claude-haiku-4-5-20251001", "provider": "anthropic"},
+    # OpenAI
     {"id": "gpt-4o", "provider": "openai"},
     {"id": "gpt-4o-mini", "provider": "openai"},
+    # AWS Bedrock
     {"id": "bedrock/anthropic.claude-3-5-sonnet-20241022-v2:0", "provider": "aws_bedrock"},
 ]
 
