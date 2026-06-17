@@ -17,5 +17,13 @@ class Settings(BaseSettings):
     agent_model: str = "claude-sonnet-4-6"
     agent_temperature: float = 0.3
 
+    # Redis — agent state persistence across sessions
+    redis_url: str = "redis://redis:6379"
+
+    # Langfuse — leave empty to disable tracing
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "http://langfuse:3000"
+
 
 settings = Settings()

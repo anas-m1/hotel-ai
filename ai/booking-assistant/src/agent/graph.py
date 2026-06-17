@@ -1,3 +1,4 @@
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph
 
@@ -15,7 +16,7 @@ from .reflection import reflect_on_error
 from .state import AgentState
 
 
-def build_graph() -> StateGraph:
+def build_graph(checkpointer: BaseCheckpointSaver | None = None) -> StateGraph:
     workflow = StateGraph(AgentState)
 
     workflow.add_node("planner", create_plan)
@@ -55,5 +56,4 @@ def build_graph() -> StateGraph:
         {"executor": "executor", "end": END},
     )
 
-    checkpointer = MemorySaver()
-    return workflow.compile(checkpointer=checkpointer)
+    return workflow.compile(checkpointer=checkpointer or MemorySaver())

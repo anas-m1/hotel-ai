@@ -22,5 +22,10 @@ class Settings(BaseSettings):
     # Where to find prompt YAML files (relative to the project root)
     prompts_dir: str = "prompts"
 
+    # Langfuse — leave empty to disable tracing
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "http://langfuse:3000"
+
 
 settings = Settings()

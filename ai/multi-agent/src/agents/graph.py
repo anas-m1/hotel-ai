@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 
 from agents.state import MultiAgentState
@@ -27,7 +28,7 @@ def _route(state: MultiAgentState) -> Literal["search_agent", "booking_agent", "
     return state.next_worker  # type: ignore[return-value]
 
 
-def build_graph():
+def build_graph(checkpointer: BaseCheckpointSaver | None = None):
     builder = StateGraph(MultiAgentState)
 
     builder.add_node("supervisor", supervisor_node)
@@ -41,8 +42,4 @@ def build_graph():
     builder.add_edge("search_agent", "supervisor")
     builder.add_edge("booking_agent", "supervisor")
 
-    return builder.compile()
-
-
-# Module-level singleton — compiled once at import time
-graph = build_graph()
+    return builder.compile(checkpointer=checkpointer)

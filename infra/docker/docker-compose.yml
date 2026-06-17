@@ -49,6 +49,34 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Langfuse — self-hosted LLM observability (UI at http://localhost:3000)
+  langfuse:
+    image: langfuse/langfuse:2
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://hotel:hotel@postgres:5432/langfuse
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: dev-secret-change-in-production
+      SALT: dev-salt-change-in-production
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Kafka in KRaft mode (no ZooKeeper)
   kafka:
     image: confluentinc/cp-kafka:7.7.0
@@ -117,9 +145,14 @@ services:
     ports:
       - "8092:8092"
     depends_on:
-      - llm-gateway
-      - hotel-inventory
-      - booking-ops
+      redis:
+        condition: service_healthy
+      llm-gateway:
+        condition: service_started
+      hotel-inventory:
+        condition: service_started
+      booking-ops:
+        condition: service_started
 
   multi-agent:
     build:
@@ -129,9 +162,10 @@ services:
     ports:
       - "8093:8093"
     volumes:
-      # shared/events/ schemas available at /app/shared inside the container
       - ../../shared:/app/shared:ro
     depends_on:
+      redis:
+        condition: service_healthy
       kafka:
         condition: service_healthy
       llm-gateway:
@@ -203,3 +237,4 @@ volumes:
   qdrant_data:
   llm_usage:
   kafka_data:
+  redis_data:

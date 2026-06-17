@@ -1,3 +1,6 @@
+import os
+
+import litellm
 import structlog
 import uvicorn
 from fastapi import FastAPI
@@ -35,6 +38,15 @@ async def health() -> dict[str, str]:
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    if settings.langfuse_public_key and settings.langfuse_secret_key:
+        os.environ["LANGFUSE_PUBLIC_KEY"] = settings.langfuse_public_key
+        os.environ["LANGFUSE_SECRET_KEY"] = settings.langfuse_secret_key
+        os.environ["LANGFUSE_HOST"] = settings.langfuse_host
+        litellm.success_callback = ["langfuse"]
+        log.info("langfuse_tracing_enabled", host=settings.langfuse_host)
+    else:
+        log.info("langfuse_tracing_disabled")
+
     log.info("gateway_started", port=settings.port, default_model=settings.default_model)
 
 

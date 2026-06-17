@@ -2,18 +2,17 @@ import uuid
 from typing import Any
 
 import structlog
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from langchain_core.messages import HumanMessage
+from langfuse.callback import CallbackHandler
 from langgraph.types import Command
 from pydantic import BaseModel
 
-from ..agent.graph import build_graph
-from ..agent.state import AgentState
+from ..agent.instance import get_graph
+from ..config import settings
 
 log = structlog.get_logger()
 router = APIRouter()
-
-_graph = build_graph()
 
 
 class ChatRequest(BaseModel):
@@ -33,13 +32,28 @@ class ResumeRequest(BaseModel):
     approved: bool
 
 
-def _config(session_id: str) -> dict[str, Any]:
-    return {"configurable": {"thread_id": session_id}}
+def _config(session_id: str, user_id: str = "") -> dict[str, Any]:
+    callbacks = []
+    if settings.langfuse_public_key and settings.langfuse_secret_key:
+        callbacks.append(
+            CallbackHandler(
+                public_key=settings.langfuse_public_key,
+                secret_key=settings.langfuse_secret_key,
+                host=settings.langfuse_host,
+                session_id=session_id,
+                user_id=user_id or None,
+            )
+        )
+    return {
+        "configurable": {"thread_id": session_id},
+        "callbacks": callbacks,
+    }
 
 
 async def _get_interrupts(session_id: str) -> list[dict[str, Any]]:
     try:
-        state = await _graph.aget_state(_config(session_id))
+        graph = get_graph()
+        state = await graph.aget_state({"configurable": {"thread_id": session_id}})
         results = []
         for task in state.tasks:
             for interrupt in task.interrupts:
@@ -58,10 +72,14 @@ def _extract_reply(result: dict[str, Any]) -> str:
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> dict[str, Any]:
-    session_id = req.session_id or str(uuid.uuid4())
-    config = _config(session_id)
+    graph = get_graph()
+    if graph is None:
+        raise HTTPException(status_code=503, detail="Agent not ready")
 
-    result = await _graph.ainvoke(
+    session_id = req.session_id or str(uuid.uuid4())
+    config = _config(session_id, req.user_id)
+
+    result = await graph.ainvoke(
         {
             "messages": [HumanMessage(content=req.message)],
             "session_id": session_id,
@@ -84,9 +102,12 @@ async def chat(req: ChatRequest) -> dict[str, Any]:
 
 @router.post("/chat/resume", response_model=ChatResponse)
 async def resume(req: ResumeRequest) -> dict[str, Any]:
-    config = _config(req.session_id)
+    graph = get_graph()
+    if graph is None:
+        raise HTTPException(status_code=503, detail="Agent not ready")
 
-    result = await _graph.ainvoke(Command(resume=req.approved), config)
+    config = _config(req.session_id)
+    result = await graph.ainvoke(Command(resume=req.approved), config)
 
     interrupts = await _get_interrupts(req.session_id)
     reply = _extract_reply(result)

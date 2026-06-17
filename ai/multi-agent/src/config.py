@@ -19,5 +19,13 @@ class Settings(BaseSettings):
     kafka_booking_topic: str = "hotel.booking.events"
     kafka_agent_topic: str = "hotel.agent.events"
 
+    # Redis — agent state persistence
+    redis_url: str = "redis://redis:6379"
+
+    # Langfuse — leave empty to disable tracing
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "http://langfuse:3000"
+
 
 settings = Settings()

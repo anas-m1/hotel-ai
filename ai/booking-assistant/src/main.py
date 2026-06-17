@@ -1,7 +1,10 @@
 import structlog
 import uvicorn
 from fastapi import FastAPI
+from langgraph.checkpoint.memory import MemorySaver
 
+from .agent.graph import build_graph
+from .agent.instance import set_graph
 from .config import settings
 from .router.chat import router as chat_router
 
@@ -33,6 +36,17 @@ async def health() -> dict[str, str]:
 
 @app.on_event("startup")
 async def on_startup() -> None:
+    try:
+        from langgraph.checkpoint.redis.aio import AsyncRedisSaver
+
+        checkpointer = AsyncRedisSaver.from_url(settings.redis_url)
+        await checkpointer.asetup()
+        set_graph(build_graph(checkpointer))
+        log.info("checkpointer_redis", url=settings.redis_url)
+    except Exception as exc:
+        log.warning("checkpointer_fallback_memory", reason=str(exc))
+        set_graph(build_graph(MemorySaver()))
+
     log.info("booking_assistant_started", port=settings.port, model=settings.agent_model)
 
 
