@@ -16,10 +16,22 @@ terraform {
     }
   }
 
-  # Remote state — create this bucket before running terraform init.
-  # Replace <account-id> and <region> with your values.
+  # Remote state — bucket name is supplied via -backend-config to keep this
+  # file free of account-specific values (Terraform backend blocks cannot
+  # use input variables).
+  #
+  # One-time bootstrap:
+  #   aws s3 mb s3://hotel-ai-tfstate-<account-id> --region us-east-1
+  #   aws dynamodb create-table --table-name hotel-ai-tflock \
+  #     --attribute-definitions AttributeName=LockID,AttributeType=S \
+  #     --key-schema AttributeName=LockID,KeyType=HASH \
+  #     --billing-mode PAY_PER_REQUEST
+  #
+  # Then initialise with:
+  #   terraform init -backend-config=backend.hcl
+  #
+  # Copy backend.hcl.example → backend.hcl and fill in your values.
   backend "s3" {
-    bucket         = "hotel-ai-tfstate-<account-id>"
     key            = "hotel-ai/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "hotel-ai-tflock"

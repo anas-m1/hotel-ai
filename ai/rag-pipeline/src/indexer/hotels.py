@@ -42,8 +42,7 @@ async def _fetch_all_hotels() -> list[dict[str, Any]]:
 
     async with httpx.AsyncClient(base_url=settings.hotel_inventory_url, timeout=30) as client:
         while True:
-            resp = client.get("/v1/hotels", params={"limit": limit, "offset": offset})
-            resp = await resp
+            resp = await client.get("/v1/hotels", params={"limit": limit, "offset": offset})
             resp.raise_for_status()
             batch: list[dict[str, Any]] = resp.json()
             if not batch:

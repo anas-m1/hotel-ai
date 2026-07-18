@@ -74,6 +74,38 @@ module "eks" {
   }
 }
 
+# IAM role for the AWS Load Balancer Controller (IRSA)
+data "aws_iam_policy_document" "lbc_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    effect  = "Allow"
+    principals {
+      type        = "Federated"
+      identifiers = [module.eks.oidc_provider_arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${module.eks.oidc_provider}:sub"
+      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${module.eks.oidc_provider}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "lbc" {
+  name               = "${local.cluster_full}-aws-lbc"
+  assume_role_policy = data.aws_iam_policy_document.lbc_assume.json
+}
+
+resource "aws_iam_role_policy_attachment" "lbc" {
+  role       = aws_iam_role.lbc.name
+  policy_arn = "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
+}
+
 # AWS Load Balancer Controller — needed for ALB ingress
 resource "helm_release" "aws_lbc" {
   name       = "aws-load-balancer-controller"
@@ -92,5 +124,15 @@ resource "helm_release" "aws_lbc" {
     value = "true"
   }
 
-  depends_on = [module.eks]
+  set {
+    name  = "serviceAccount.name"
+    value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.lbc.arn
+  }
+
+  depends_on = [module.eks, aws_iam_role_policy_attachment.lbc]
 }

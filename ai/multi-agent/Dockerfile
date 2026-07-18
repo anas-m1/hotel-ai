@@ -2,7 +2,7 @@
 FROM python:3.12-slim AS deps
 
 WORKDIR /app
-RUN pip install uv --no-cache-dir
+COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /bin/uv
 
 COPY pyproject.toml .
 RUN uv sync --no-install-project --no-dev

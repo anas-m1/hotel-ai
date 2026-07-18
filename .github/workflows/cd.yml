@@ -93,7 +93,7 @@ jobs:
           REGISTRY=${{ env.ECR_REGISTRY }}
           ENV=prod
 
-          for svc in hotel-inventory booking-ops llm-gateway booking-assistant multi-agent; do
+          for svc in hotel-inventory booking-ops llm-gateway rag-pipeline booking-assistant multi-agent knowledge-graph; do
             sed \
               -e "s|ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com|$REGISTRY|g" \
               -e "s|hotel-ai-ENV|hotel-ai-${ENV}|g" \
@@ -104,7 +104,7 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          for svc in hotel-inventory booking-ops llm-gateway booking-assistant multi-agent; do
+          for svc in hotel-inventory booking-ops llm-gateway rag-pipeline booking-assistant multi-agent knowledge-graph; do
             kubectl rollout status deployment/${svc} -n hotel-ai --timeout=300s
           done
 

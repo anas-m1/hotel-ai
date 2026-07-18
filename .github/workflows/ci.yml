@@ -74,12 +74,18 @@ jobs:
             name: booking-ops
           - service: ai/llm-gateway
             name: llm-gateway
+          - service: ai/rag-pipeline
+            name: rag-pipeline
           - service: ai/booking-assistant
             name: booking-assistant
           - service: ai/multi-agent
             name: multi-agent
           - service: ai/knowledge-graph
             name: knowledge-graph
+          - service: mcp/hotel-inventory
+            name: mcp-hotel-inventory
+          - service: mcp/booking-ops
+            name: mcp-booking-ops
     steps:
       - uses: actions/checkout@v4
 
