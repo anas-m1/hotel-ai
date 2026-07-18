@@ -11,6 +11,7 @@ type Config struct {
 	Port              string
 	PaginationDefault int32
 	PaginationMax     int32
+	BookingOpsURL     string
 }
 
 func Load() Config {
@@ -19,6 +20,7 @@ func Load() Config {
 		Port:              getEnv("PORT", "8080"),
 		PaginationDefault: int32(getEnvInt("PAGINATION_DEFAULT", 20)),
 		PaginationMax:     int32(getEnvInt("PAGINATION_MAX", 100)),
+		BookingOpsURL:     getEnv("BOOKING_OPS_URL", "http://booking-ops:8081"),
 	}
 }
 

@@ -49,8 +49,7 @@ func listHotels(repo repository.HotelRepository, cfg config.Config) http.Handler
 		case q.Get("q") != "":
 			hotels, err = repo.Search(r.Context(), q.Get("q"), limit, offset)
 		default:
-			writeError(w, http.StatusBadRequest, "one of city, rating, or q is required")
-			return
+			hotels, err = repo.ListAll(r.Context(), limit, offset)
 		}
 
 		if err != nil {

@@ -189,6 +189,8 @@ services:
         condition: service_started
       booking-ops:
         condition: service_started
+      rag-pipeline:
+        condition: service_started
 
   multi-agent:
     build:

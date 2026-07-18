@@ -16,6 +16,7 @@ import (
 func mountBookingRoutes(r chi.Router, bookings repository.BookingRepository, events repository.BookingEventRepository, cfg config.Config) {
 	r.Post("/bookings", createBooking(bookings, events))
 	r.Get("/bookings/{id}", getBooking(bookings, events))
+	r.Delete("/bookings/{id}", cancelBooking(bookings, events))
 	r.Post("/bookings/{id}/status", updateBookingStatus(bookings, events))
 	r.Get("/guests/{id}/bookings", listBookingsByGuest(bookings, cfg))
 	r.Get("/hotels/{code}/bookings", listBookingsByHotel(bookings))
@@ -159,6 +160,33 @@ func updateBookingStatus(bookings repository.BookingRepository, events repositor
 			map[string]any{"status": updated.Status, "version": updated.Version}, "guest")
 
 		writeJSON(w, http.StatusOK, updated)
+	}
+}
+
+func cancelBooking(bookings repository.BookingRepository, events repository.BookingEventRepository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(chi.URLParam(r, "id"))
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid booking id")
+			return
+		}
+		booking, err := bookings.GetByID(r.Context(), id)
+		if err != nil {
+			mapDomainError(w, err)
+			return
+		}
+		if booking.Status == domain.StatusCancelled {
+			writeJSON(w, http.StatusOK, booking)
+			return
+		}
+		updated, err := bookings.UpdateStatus(r.Context(), id, booking.Version, domain.StatusCancelled)
+		if err != nil {
+			mapDomainError(w, err)
+			return
+		}
+		_, _ = events.Insert(r.Context(), updated.ID, "BookingCancelled",
+			map[string]any{"status": updated.Status, "version": updated.Version}, "guest")
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

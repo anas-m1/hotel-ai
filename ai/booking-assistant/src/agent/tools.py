@@ -4,7 +4,7 @@ import httpx
 import structlog
 from langchain_core.tools import tool
 
-from config import settings
+from ..config import settings
 
 log = structlog.get_logger()
 

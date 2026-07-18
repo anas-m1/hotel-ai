@@ -18,39 +18,39 @@ from config import settings
 
 log = structlog.get_logger()
 
-# Import shared event schemas — path added to sys.path via PYTHONPATH in Dockerfile
-from booking_events import EventEnvelope, EventType, parse_payload
-
-
-async def _handle_booking_created(envelope: EventEnvelope) -> None:
-    payload = parse_payload(envelope)
-    log.info(
-        "booking_created",
-        booking_id=str(payload.booking_id),  # type: ignore[attr-defined]
-        hotel_code=payload.hotel_code,  # type: ignore[attr-defined]
-        total_price=str(payload.total_price),  # type: ignore[attr-defined]
-    )
-    # Phase 7+: trigger fraud scoring, send to analytics pipeline
-
-
-async def _handle_booking_cancelled(envelope: EventEnvelope) -> None:
-    payload = parse_payload(envelope)
-    log.info(
-        "booking_cancelled",
-        booking_id=str(payload.booking_id),  # type: ignore[attr-defined]
-        hotel_code=payload.hotel_code,  # type: ignore[attr-defined]
-    )
-    # Phase 7+: update recommendation model, release inventory
-
-
-_HANDLERS = {
-    EventType.BOOKING_CREATED: _handle_booking_created,
-    EventType.BOOKING_CANCELLED: _handle_booking_cancelled,
-}
-
 
 async def run_consumer() -> None:
     """Consume hotel.booking.events indefinitely. Called at app startup."""
+    # Import inside the coroutine so a missing shared volume only kills the
+    # consumer task, not the whole FastAPI process.
+    try:
+        from booking_events import EventEnvelope, EventType, parse_payload
+    except ImportError:
+        log.warning("booking_events_unavailable", reason="shared volume not mounted; consumer disabled")
+        return
+
+    async def _handle_booking_created(envelope: EventEnvelope) -> None:
+        payload = parse_payload(envelope)
+        log.info(
+            "booking_created",
+            booking_id=str(payload.booking_id),  # type: ignore[attr-defined]
+            hotel_code=payload.hotel_code,  # type: ignore[attr-defined]
+            total_price=str(payload.total_price),  # type: ignore[attr-defined]
+        )
+
+    async def _handle_booking_cancelled(envelope: EventEnvelope) -> None:
+        payload = parse_payload(envelope)
+        log.info(
+            "booking_cancelled",
+            booking_id=str(payload.booking_id),  # type: ignore[attr-defined]
+            hotel_code=payload.hotel_code,  # type: ignore[attr-defined]
+        )
+
+    handlers = {
+        EventType.BOOKING_CREATED: _handle_booking_created,
+        EventType.BOOKING_CANCELLED: _handle_booking_cancelled,
+    }
+
     consumer = AIOKafkaConsumer(
         settings.kafka_booking_topic,
         bootstrap_servers=settings.kafka_bootstrap_servers,
@@ -71,7 +71,7 @@ async def run_consumer() -> None:
                 log.warning("kafka_bad_message", error=str(exc), offset=msg.offset)
                 continue
 
-            handler = _HANDLERS.get(envelope.event_type)
+            handler = handlers.get(envelope.event_type)
             if handler:
                 try:
                     await handler(envelope)

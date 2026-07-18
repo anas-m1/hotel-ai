@@ -28,7 +28,7 @@ func NewRouter(cfg config.Config, hotels repository.HotelRepository, rooms repos
 	r.Route("/v1", func(r chi.Router) {
 		mountLocationRoutes(r, locations)
 		mountHotelRoutes(r, hotels, cfg)
-		mountRoomRoutes(r, rooms)
+		mountRoomRoutes(r, rooms, cfg)
 	})
 
 	return r

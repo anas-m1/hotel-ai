@@ -14,6 +14,7 @@ import (
 
 type HotelRepository interface {
 	GetByCode(ctx context.Context, hotelCode string) (domain.Hotel, error)
+	ListAll(ctx context.Context, limit, offset int32) ([]domain.Hotel, error)
 	ListByCity(ctx context.Context, cityCode string, limit, offset int32) ([]domain.Hotel, error)
 	ListByRating(ctx context.Context, rating domain.HotelRating, limit, offset int32) ([]domain.Hotel, error)
 	Search(ctx context.Context, query string, limit, offset int32) ([]domain.Hotel, error)
@@ -48,6 +49,14 @@ func (r *postgresHotelRepo) GetByCode(ctx context.Context, hotelCode string) (do
 		return domain.Hotel{}, err
 	}
 	return hotelFromDB(row), nil
+}
+
+func (r *postgresHotelRepo) ListAll(ctx context.Context, limit, offset int32) ([]domain.Hotel, error) {
+	rows, err := r.q.ListAllHotels(ctx, db.ListAllHotelsParams{Limit: limit, Offset: offset})
+	if err != nil {
+		return nil, err
+	}
+	return hotelsFromDB(rows), nil
 }
 
 func (r *postgresHotelRepo) ListByCity(ctx context.Context, cityCode string, limit, offset int32) ([]domain.Hotel, error) {

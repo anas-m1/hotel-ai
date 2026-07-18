@@ -5,7 +5,7 @@ from langchain_core.messages import AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
 
-from config import settings
+from ..config import settings
 from .prompts import PLANNER_PROMPT
 from .state import AgentState
 

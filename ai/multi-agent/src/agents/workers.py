@@ -39,28 +39,28 @@ def _worker_llm() -> ChatOpenAI:
     )
 
 
-def _run_worker(system_prompt: str, tools: list, task: str) -> str:
+async def _run_worker(system_prompt: str, tools: list, task: str) -> str:
     agent = create_react_agent(_worker_llm(), tools, state_modifier=system_prompt)
-    result = agent.invoke({"messages": [HumanMessage(content=task)]})
+    result = await agent.ainvoke({"messages": [HumanMessage(content=task)]})
     last = result["messages"][-1]
     return str(last.content)
 
 
-def search_agent_node(state: MultiAgentState) -> dict:
+async def search_agent_node(state: MultiAgentState) -> dict:
     task = next(
         (t["task"] for t in state.worker_tasks if t["worker"] == "search_agent"),
         state.user_request,
     )
-    output = _run_worker(_SEARCH_SYSTEM, SEARCH_TOOLS, task)
+    output = await _run_worker(_SEARCH_SYSTEM, SEARCH_TOOLS, task)
     result = WorkerResult(worker="search_agent", output=output)
     return {"worker_results": state.worker_results + [result]}
 
 
-def booking_agent_node(state: MultiAgentState) -> dict:
+async def booking_agent_node(state: MultiAgentState) -> dict:
     task = next(
         (t["task"] for t in state.worker_tasks if t["worker"] == "booking_agent"),
         state.user_request,
     )
-    output = _run_worker(_BOOKING_SYSTEM, BOOKING_TOOLS, task)
+    output = await _run_worker(_BOOKING_SYSTEM, BOOKING_TOOLS, task)
     result = WorkerResult(worker="booking_agent", output=output)
     return {"worker_results": state.worker_results + [result]}

@@ -4,7 +4,7 @@ import structlog
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from config import settings
+from ..config import settings
 from .prompts import REFLECTION_PROMPT
 from .state import AgentState
 

@@ -17,25 +17,32 @@ async def semantic_search_hotels(query: str, city_code: str = "", min_rating: fl
         city_code: Optional 3-letter IATA city code to restrict results (e.g. "DXB").
         min_rating: Minimum star rating filter (0.0 = no filter, 4.0 = 4-star+).
     """
-    params: dict[str, str | float] = {"query": query}
+    body: dict[str, str | float | int] = {"query": query, "limit": 10}
     if city_code:
-        params["city_code"] = city_code
+        body["city_code"] = city_code
     if min_rating > 0:
-        params["min_rating"] = min_rating
+        body["min_rating"] = min_rating
 
     async with httpx.AsyncClient(timeout=10.0) as client:
-        resp = await client.get(f"{settings.rag_pipeline_url}/v1/search", params=params)
-        resp.raise_for_status()
-        results = resp.json()
+        try:
+            resp = await client.post(
+                f"{settings.rag_pipeline_url}/v1/search/hotels", json=body
+            )
+            resp.raise_for_status()
+            results = resp.json().get("results", [])
+        except Exception:
+            return "Search service unavailable — please try again."
 
     if not results:
         return "No hotels found matching your criteria."
 
     lines = [f"Found {len(results)} hotels:"]
     for h in results:
+        rating = h.get("rating", "N/A")
+        stars = "★" * int(rating) if isinstance(rating, (int, float)) else ""
         lines.append(
-            f"- {h['name']} ({h['hotel_code']}) | {h['city_code']} | "
-            f"{'★' * int(h.get('rating', 0))} ({h.get('rating', 'N/A')}★)"
+            f"- {h.get('name', '?')} ({h.get('hotel_code', '?')}) | "
+            f"{h.get('city_code', '?')} | {stars} ({rating})"
         )
     return "\n".join(lines)
 

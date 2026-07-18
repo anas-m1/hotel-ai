@@ -4,7 +4,7 @@ import structlog
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 
-from config import settings
+from ..config import settings
 from .prompts import EXECUTOR_PROMPT
 from .state import AgentState
 from .tools import tools as agent_tools

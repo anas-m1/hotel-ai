@@ -28,16 +28,16 @@ def _rrf_score(rank: int, k: int = 60) -> float:
 
 async def _vector_search(query: str, city_code: str, limit: int) -> list[dict]:
     """Call rag-pipeline for semantic search results."""
-    params: dict = {"query": query, "limit": limit}
+    body: dict = {"query": query, "limit": limit}
     if city_code:
-        params["city_code"] = city_code
+        body["city_code"] = city_code
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                f"{settings.rag_pipeline_url}/v1/search", params=params
+            resp = await client.post(
+                f"{settings.rag_pipeline_url}/v1/search/hotels", json=body
             )
             resp.raise_for_status()
-            return resp.json()
+            return resp.json().get("results", [])
     except Exception as exc:
         log.warning("vector_search_failed", error=str(exc))
         return []
