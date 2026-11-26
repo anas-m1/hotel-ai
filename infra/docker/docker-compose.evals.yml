@@ -1,0 +1,36 @@
+# Add this file for dashboard-triggered full-agent experiments.
+services:
+  langfuse-web:
+    environment:
+      LANGFUSE_CODE_EVAL_DISPATCHER: insecure-local
+      LANGFUSE_WEBHOOK_WHITELISTED_HOST: hotel-agent-evals
+  langfuse-worker:
+    environment:
+      LANGFUSE_CODE_EVAL_DISPATCHER: insecure-local
+      QUEUE_CONSUMER_CODE_EVAL_EXECUTION_QUEUE_IS_ENABLED: "true"
+      LANGFUSE_CODE_EVAL_EXECUTION_WORKER_CONCURRENCY: "1"
+  hotel-agent-evals:
+    profiles: ["evals"]
+    build:
+      context: ../..
+      dockerfile: evals/agent/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - agent-evals.env
+    environment:
+      LANGFUSE_HOST: http://langfuse-web:3000
+      ASSISTANT_URL: http://booking-assistant:8092
+      INVENTORY_URL: http://hotel-inventory:8080
+    ports:
+      - "127.0.0.1:8096:80"
+    volumes:
+      - agent_evals_data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  agent_evals_data:

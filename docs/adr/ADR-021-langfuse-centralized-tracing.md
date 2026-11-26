@@ -17,7 +17,7 @@ Use **Langfuse** (self-hosted) as the single observability backend for all LLM c
 - `ai/llm-gateway`: activate litellm's built-in Langfuse callback
   (`litellm.success_callback = ["langfuse"]`). Every LLM call is automatically
   traced — no manual instrumentation in each route.
-- `ai/booking-assistant`, `ai/multi-agent`: pass `langfuse.callback.CallbackHandler`
+- `ai/booking-assistant` (experimental adapters are archived in hotel-ai-lab): pass `langfuse.callback.CallbackHandler`
   in the LangGraph `invoke` config. LangGraph emits span events for every node
   execution, tool call, and LLM invocation automatically.
 

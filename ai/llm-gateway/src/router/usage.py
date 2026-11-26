@@ -48,9 +48,7 @@ async def get_usage(last: int = 20) -> dict[str, Any]:
         model = e.get("model", "unknown")
         by_model[model]["requests"] += 1
         by_model[model]["total_tokens"] += e.get("total_tokens", 0)
-        by_model[model]["cost_usd"] = round(
-            by_model[model]["cost_usd"] + e.get("cost_usd", 0.0), 6
-        )
+        by_model[model]["cost_usd"] = round(by_model[model]["cost_usd"] + e.get("cost_usd", 0.0), 6)
 
     return {
         "total_requests": len(entries),

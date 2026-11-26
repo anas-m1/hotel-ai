@@ -1,15 +1,34 @@
 from typing import Any
 
+import httpx
 import structlog
 from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
+from pydantic import ValidationError
 
-from ..config import settings
-from .prompts import EXECUTOR_PROMPT
+from config import settings
+
+from .llm import call_llm
+from .prompts import AGENT_PROMPT
 from .state import AgentState
 from .tools import tools as agent_tools
 
 log = structlog.get_logger()
+
+# Reserve the last LLM call for a text answer so an exhausted tool loop never
+# returns an unexecuted tool call as if it were a completed response.
+MAX_STEPS = 4
+READ_ONLY_TOOLS = frozenset(
+    {
+        "search_hotels",
+        "semantic_search_hotels",
+        "get_hotel",
+        "list_rooms",
+        "check_availability",
+        "get_guest",
+        "get_booking",
+    }
+)
 
 
 def _build_llm() -> ChatOpenAI:
@@ -18,22 +37,20 @@ def _build_llm() -> ChatOpenAI:
         temperature=settings.agent_temperature,
         base_url=f"{settings.llm_gateway_url}/v1",
         api_key="sk-noop",
+        model_kwargs={"max_tokens": 1024},
     )
 
 
-async def executor(state: AgentState) -> dict[str, Any]:
-    """Execute the current plan step using the LLM with tools."""
-    step = state.plan[state.current_step] if state.plan and state.current_step < len(state.plan) else ""
-    step_context = f"Current step ({state.current_step + 1}/{len(state.plan)}): {step}" if step else ""
-
-    llm = _build_llm().bind_tools(agent_tools)
-    messages = [
-        SystemMessage(content=EXECUTOR_PROMPT),
-        *([SystemMessage(content=step_context)] if step_context else []),
-        *state.messages,
-    ]
-    response: AIMessage = await llm.ainvoke(messages)
-    return {"messages": [response]}
+async def agent_node(state: AgentState) -> dict[str, Any]:
+    """ReAct agent: think → act → observe loop."""
+    llm = _build_llm()
+    if state.step_count < MAX_STEPS - 1:
+        llm = llm.bind_tools(agent_tools, tool_choice="auto")
+    else:
+        log.info("agent_final_answer_mode", step_count=state.step_count)
+    messages = [SystemMessage(content=AGENT_PROMPT), *state.messages]
+    response = await call_llm(llm, messages)
+    return {"messages": [response], "step_count": state.step_count + 1}
 
 
 async def execute_tools(state: AgentState) -> dict[str, Any]:
@@ -44,54 +61,65 @@ async def execute_tools(state: AgentState) -> dict[str, Any]:
         return {}
 
     results: list[ToolMessage] = []
-    errors: list[str] = []
 
     for tc in last_message.tool_calls:
+        if state.read_only and tc["name"] not in READ_ONLY_TOOLS:
+            results.append(
+                ToolMessage(
+                    content="This action is blocked in read-only evaluation mode.",
+                    tool_call_id=tc["id"],
+                    status="error",
+                    additional_kwargs={"execution_status": "blocked", "error_category": "policy"},
+                )
+            )
+            continue
         tool_fn = tool_map.get(tc["name"])
         if tool_fn is None:
-            msg = f"Unknown tool: {tc['name']}"
-            results.append(ToolMessage(content=msg, tool_call_id=tc["id"]))
-            errors.append(msg)
+            results.append(
+                ToolMessage(
+                    content=f"Unknown tool: {tc['name']}",
+                    tool_call_id=tc["id"],
+                    status="error",
+                    additional_kwargs={"error_category": "tool_selection"},
+                )
+            )
             continue
 
         try:
             output = await tool_fn.ainvoke(tc["args"])
             results.append(ToolMessage(content=str(output), tool_call_id=tc["id"]))
         except Exception as exc:
-            log.error("tool_call_failed", tool=tc["name"], error=str(exc))
-            msg = f"Error calling {tc['name']}: {exc!s}"
-            results.append(ToolMessage(content=msg, tool_call_id=tc["id"]))
-            errors.append(msg)
+            category = "tool_execution"
+            if isinstance(exc, (httpx.NetworkError, httpx.TimeoutException)):
+                category = "operational"
+            elif isinstance(exc, httpx.HTTPStatusError):
+                category = (
+                    "operational"
+                    if exc.response.status_code >= 500 or exc.response.status_code == 429
+                    else "tool_input"
+                )
+            elif isinstance(exc, ValidationError):
+                category = "tool_input"
+            log.error("tool_call_failed", tool=tc["name"], error_type=type(exc).__name__)
+            results.append(
+                ToolMessage(
+                    content=f"Error calling {tc['name']}: {type(exc).__name__}",
+                    tool_call_id=tc["id"],
+                    status="error",
+                    additional_kwargs={"error_category": category},
+                )
+            )
 
-    return {"messages": results, "tool_errors": errors}
+    return {"messages": results}
 
 
-async def advance_check(state: AgentState) -> dict[str, Any]:
-    """Advance to the next plan step."""
-    next_step = state.current_step + 1
-    if next_step < len(state.plan):
-        return {"current_step": next_step}
-    return {}
-
-
-def should_continue(state: AgentState) -> str:
-    """After executor: route to tools, HITL, or advance."""
+def route_after_agent(state: AgentState) -> str:
+    """Route: tool calls → tools, book_room → HITL, else → end."""
     last_message = state.messages[-1]
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
-        if any(tc["name"] == "book_room" for tc in last_message.tool_calls):
+        if not state.read_only and any(tc["name"] == "book_room" for tc in last_message.tool_calls):
             return "human_approval"
+        if state.step_count >= MAX_STEPS:
+            return "end"
         return "tools"
-    return "advance"
-
-
-def should_retry(state: AgentState) -> str:
-    if state.tool_errors and state.retry_count < 2:
-        return "reflect"
-    return "advance"
-
-
-def should_advance_fn(state: AgentState) -> str:
-    """After advancing: route to next executor step or end."""
-    if state.current_step >= len(state.plan):
-        return "end"
-    return "executor"
+    return "end"

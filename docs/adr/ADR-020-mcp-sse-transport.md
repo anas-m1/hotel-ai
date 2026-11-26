@@ -14,7 +14,7 @@ MCP servers can communicate with clients over two transports:
 
 ## Decision
 
-Run both MCP servers (`mcp/hotel-inventory`, `mcp/booking-ops`) using the SSE
+Run both MCP servers (`integrations/mcp/hotel-inventory`, `integrations/mcp/booking-ops`) using the SSE
 transport on dedicated HTTP ports (8100, 8101). Claude Desktop is configured to
 connect via `url: http://localhost:{port}/sse`.
 
@@ -35,7 +35,7 @@ connect via `url: http://localhost:{port}/sse`.
 ## Consequences
 
 - Claude Desktop must be configured with `"url"` instead of `"command"` in its
-  MCP server config. The example config is in `phases/06_mcp/claude_desktop_config.json.example`.
+  MCP server config. Historical client examples are archived in the companion hotel-ai-lab repository.
 - SSE adds a network hop vs stdio. Negligible: MCP calls are interactive and
   tool execution latency (HTTP to Go service) dominates.
 - The MCP servers must be running before Claude Desktop connects. Stdio would

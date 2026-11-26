@@ -3,13 +3,15 @@ FROM python:3.12-slim AS deps
 
 WORKDIR /app
 
-COPY --from=ghcr.io/astral-sh/uv:0.5.14 /uv /bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.18 /uv /bin/uv
 
-COPY pyproject.toml .
-RUN uv sync --no-install-project --no-dev
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,id=hotel-ai-rag-uv,target=/root/.cache/uv,sharing=locked \
+    uv sync --locked --no-install-project --no-dev
 
-# Pre-download both embedding models into the image so the container starts
-# without fetching ~100 MB at runtime. Models land in ~/.cache/fastembed.
+# Pin the cache to a known path inside WORKDIR (avoids home-dir ambiguity
+# and works correctly when the runtime container runs as a non-root user).
+ENV FASTEMBED_CACHE_PATH=/app/models
 RUN .venv/bin/python -c "\
 from fastembed import TextEmbedding; \
 from fastembed.sparse import SparseTextEmbedding; \
@@ -22,9 +24,10 @@ FROM python:3.12-slim
 WORKDIR /app
 
 COPY --from=deps /app/.venv /app/.venv
-COPY --from=deps /root/.cache/fastembed /root/.cache/fastembed
+COPY --from=deps /app/models /app/models
 
 ENV PATH="/app/.venv/bin:$PATH"
+ENV FASTEMBED_CACHE_PATH=/app/models
 
 COPY src/ ./src/
 

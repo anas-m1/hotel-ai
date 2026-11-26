@@ -1,5 +1,8 @@
 import os
+import sys
+import types
 
+import langfuse
 import litellm
 import structlog
 import uvicorn
@@ -7,6 +10,20 @@ from fastapi import FastAPI
 
 from .config import settings
 from .router import chat, models, usage
+
+# langfuse >= 4.0 moved its version string to `langfuse._version`, but litellm's
+# langfuse integration (1.100.x) still reads `langfuse.version.__version__`.
+# Provide the legacy module so the tracing callback can initialize.
+if not hasattr(langfuse, "version"):
+    _version = getattr(
+        __import__("langfuse._version", fromlist=["__version__"]),
+        "__version__",
+        "0.0.0",
+    )
+    _shim = types.ModuleType("langfuse.version")
+    _shim.__version__ = _version
+    sys.modules["langfuse.version"] = _shim
+    langfuse.version = _shim
 
 structlog.configure(
     processors=[

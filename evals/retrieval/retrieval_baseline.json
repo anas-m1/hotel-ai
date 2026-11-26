@@ -1,0 +1,54 @@
+{
+  "suite": "hotel-retrieval-smoke-v1",
+  "generated_at": "2026-10-30T18:08:33.073303+00:00",
+  "base_url": "http://localhost:8091",
+  "k": 5,
+  "case_count": 3,
+  "recall_at_k": 1.0,
+  "mean_reciprocal_rank": 1.0,
+  "all_cases_retrieved": true,
+  "limitations": [
+    "Three seeded hotels and one expected result per query; this is a smoke baseline, not a quality claim."
+  ],
+  "cases": [
+    {
+      "id": "london_hyde_park",
+      "expected_hotel_codes": [
+        "HTL002"
+      ],
+      "retrieved_hotel_codes": [
+        "HTL002"
+      ],
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "latency_ms": 263.94,
+      "error": null
+    },
+    {
+      "id": "dubai_marina",
+      "expected_hotel_codes": [
+        "HTL001"
+      ],
+      "retrieved_hotel_codes": [
+        "HTL001"
+      ],
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "latency_ms": 16.56,
+      "error": null
+    },
+    {
+      "id": "new_york_times_square",
+      "expected_hotel_codes": [
+        "HTL003"
+      ],
+      "retrieved_hotel_codes": [
+        "HTL003"
+      ],
+      "recall_at_k": 1.0,
+      "reciprocal_rank": 1.0,
+      "latency_ms": 8.29,
+      "error": null
+    }
+  ]
+}

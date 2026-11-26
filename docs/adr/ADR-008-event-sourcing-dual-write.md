@@ -17,3 +17,10 @@ Dual-write: every booking operation writes to `bookings` (current state, mutable
 ## Consequences
 - Two writes per booking mutation — slightly more latency, acceptable.
 - Columnar analytics (CDC → columnar store) deferred to Phase 7. `booking_events.payload` is JSONB today; schema migration to a columnar format is straightforward when needed.
+
+## Implementation clarification
+
+The current code stores booking state plus an audit trail; it is not pure event
+sourcing. Booking and event inserts are separate operations, and event-insert
+errors are currently ignored. No Go Kafka publisher or transactional outbox is
+implemented. See the architecture limitations before relying on delivery.

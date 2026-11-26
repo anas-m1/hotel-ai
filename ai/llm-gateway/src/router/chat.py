@@ -15,7 +15,9 @@ router = APIRouter()
 
 class Message(BaseModel):
     role: str
-    content: str
+    content: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
 
 
 class ChatRequest(BaseModel):
@@ -23,9 +25,29 @@ class ChatRequest(BaseModel):
     messages: list[Message]
     temperature: float = 0.7
     max_tokens: int | None = None
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: str | dict[str, Any] | None = None
     # If set, prepends the named prompt's system message and inherits its default model
     prompt_name: str | None = None
     prompt_version: str | None = None
+
+
+def provider_options(model: str) -> dict[str, Any]:
+    """Provider credentials/endpoints come only from server configuration."""
+    if model.startswith("ollama_chat/"):
+        return {"api_base": settings.ollama_api_base}
+    if model.startswith("openrouter/"):
+        if not settings.openrouter_api_key:
+            raise HTTPException(status_code=503, detail="OpenRouter is not configured")
+        return {"api_base": "https://openrouter.ai/api/v1", "api_key": settings.openrouter_api_key}
+    if model.startswith("hosted_vllm/"):
+        if not settings.self_hosted_api_base:
+            raise HTTPException(status_code=503, detail="Self-hosted inference is not configured")
+        options = {"api_base": settings.self_hosted_api_base}
+        if settings.self_hosted_api_key:
+            options["api_key"] = settings.self_hosted_api_key
+        return options
+    return {}
 
 
 @router.post("/chat/completions")
@@ -50,23 +72,29 @@ async def chat_completions(req: ChatRequest) -> dict[str, Any]:
 
     log.info("llm_request", model=model, messages=len(messages))
 
+    options = provider_options(model)
+
     try:
         response = await litellm.acompletion(
             model=model,
             messages=messages,
             temperature=req.temperature,
             max_tokens=req.max_tokens,
+            tools=req.tools,
+            tool_choice=req.tool_choice,
+            **options,
         )
     except litellm.AuthenticationError as exc:
-        raise HTTPException(status_code=401, detail=f"Provider authentication failed: {exc}") from exc
+        raise HTTPException(status_code=401, detail="Provider authentication failed") from exc
     except litellm.RateLimitError as exc:
         raise HTTPException(status_code=429, detail="Provider rate limit exceeded") from exc
     except litellm.ServiceUnavailableError as exc:
         raise HTTPException(status_code=503, detail="Provider unavailable") from exc
     except litellm.APIConnectionError as exc:
+        log.error("llm_provider_connection_error", model=model, error_type=type(exc).__name__)
         raise HTTPException(status_code=502, detail="Could not reach provider") from exc
     except Exception as exc:
-        log.error("llm_call_failed", model=model, error=str(exc))
+        log.error("llm_call_failed", model=model, error_type=type(exc).__name__)
         raise HTTPException(status_code=502, detail="LLM provider error") from exc
 
     record_usage(model=model, response=response)

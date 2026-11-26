@@ -1,4 +1,50 @@
+# ── Infra ───────────────────────────────────────────────────────────────────
+# Shared env for the Langfuse v4 stack (web + worker). Postgres keeps
+# OLTP/entity data; traces/observations/scores live in Clickhouse; event
+# bodies/media are archived in Minio; redis is the ingest queue/cache.
+x-langfuse-env: &langfuse-env
+  DATABASE_URL: postgresql://hotel:hotel@postgres:5432/langfuse
+  NEXTAUTH_URL: http://localhost:3000
+  NEXTAUTH_SECRET: dev-secret-change-in-production
+  SALT: dev-salt-change-in-production
+  ENCRYPTION_KEY: cb4be7c5cd3020d7206cbed0a4ef55979cb78110ea5f799d532dfd3c32e7fdc8 # local development default; gitleaks:allow
+  TELEMETRY_ENABLED: "false"
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
+  CLICKHOUSE_USER: clickhouse
+  CLICKHOUSE_PASSWORD: clickhouse
+  CLICKHOUSE_CLUSTER_ENABLED: "false"
+  # v2→v4 server jump: classic ingestion (litellm callback, <v4 SDKs) writes to
+  # the old tables AND is replayed into the new events model by the worker
+  # (dual-write bridge, ~15 min propagation). Native OTel/>=v4-SDK writes land
+  # immediately. No old history to backfill (v2 tables were dropped), so the
+  # historic backfill is left disabled.
+  LANGFUSE_MIGRATION_V4_WRITE_MODE: "dual"
+  LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL: "false"
+  REDIS_HOST: langfuse-redis
+  REDIS_PORT: 6379
+  REDIS_AUTH: langfuse-dev-only
+  LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_EVENT_UPLOAD_REGION: us-east-1
+  LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+  LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://minio:9000
+  LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+  LANGFUSE_S3_MEDIA_UPLOAD_BUCKET: langfuse
+  LANGFUSE_S3_MEDIA_UPLOAD_REGION: us-east-1
+  LANGFUSE_S3_MEDIA_UPLOAD_ACCESS_KEY_ID: minio
+  LANGFUSE_S3_MEDIA_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+  LANGFUSE_S3_MEDIA_UPLOAD_FORCE_PATH_STYLE: "true"
+
 services:
+
+  # Optional CPU-first model host. Weights are pulled explicitly, not on startup.
+  ollama:
+    profiles: ["local-model"]
+    image: ollama/ollama@sha256:b2f0122c476bc9fe7ce679d8bb4bd555351e25e2554eefb156f61cb0a89cf429
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
 
   # ── Infrastructure ────────────────────────────────────────────────────────
   postgres:
@@ -50,105 +96,116 @@ services:
       - qdrant_data:/qdrant/storage
 
   redis:
-    image: redis:7-alpine
+    # LangGraph Redis checkpointer uses Redis Search (FT.* commands).
+    image: redis/redis-stack-server:7.4.0-v7
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-stack-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # Langfuse — self-hosted LLM observability (UI at http://localhost:3000)
-  langfuse:
-    image: langfuse/langfuse:2
-    ports:
-      - "3000:3000"
+  # Langfuse's cache/queue Redis is separate because LangGraph uses the
+  # passwordless Redis Stack above for its checkpoint indexes.
+  langfuse-redis:
+    profiles: ["observability"]
+    image: redis:7-alpine
     environment:
-      DATABASE_URL: postgresql://hotel:hotel@postgres:5432/langfuse
-      NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: dev-secret-change-in-production
-      SALT: dev-salt-change-in-production
-      TELEMETRY_ENABLED: "false"
+      REDIS_PASSWORD: langfuse-dev-only
+    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - langfuse_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Langfuse v4 — self-hosted LLM observability stack ──────────────────────
+  # UI at http://localhost:3000 (langfuse-web). Minio console at
+  # http://localhost:9091 (creds minio/miniosecret). Events flow:
+  #   SDK/API → langfuse-web → redis queue → langfuse-worker → clickhouse
+  # Postgres keeps OLTP/entity data; traces/observations/scores live in
+  # Clickhouse; event bodies/blob-media are archived in Minio (bucket "langfuse").
+  # The OTEL ingest endpoint (/api/public/otel) is available on langfuse-web,
+  # so SDK-level traces (LangChain/LangGraph v4 callbacks) also work.
+  # Reuses the shared Postgres (db "langfuse") and its own password-protected
+  # Redis; application checkpointer data remains in Redis Stack above.
+  clickhouse:
+    profiles: ["observability"]
+    image: clickhouse/clickhouse-server:25.12
+    user: "101:101"
+    environment:
+      CLICKHOUSE_DB: default
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - clickhouse_logs:/var/log/clickhouse-server
+    ports:
+      - "127.0.0.1:8123:8123"   # HTTP (native is internal-only)
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    profiles: ["observability"]
+    image: cgr.dev/chainguard/minio
+    entrypoint: sh
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    ports:
+      - "127.0.0.1:9090:9000"
+      - "127.0.0.1:9091:9001"   # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 1s
+      timeout: 5s
+      retries: 5
+
+  langfuse-worker:
+    profiles: ["observability"]
+    image: docker.langfuse.com/langfuse/langfuse-worker:4.36.0
+    restart: unless-stopped
+    environment: *langfuse-env
     depends_on:
       postgres:
         condition: service_healthy
-
-  neo4j:
-    image: neo4j:5.18-community
-    ports:
-      - "7474:7474"   # Browser UI
-      - "7687:7687"   # Bolt
-    environment:
-      NEO4J_AUTH: neo4j/hotel-password
-      NEO4J_PLUGINS: '["apoc"]'
-      NEO4J_dbms_memory_heap_initial__size: 512m
-      NEO4J_dbms_memory_heap_max__size: 1G
-    volumes:
-      - neo4j_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "cypher-shell -u neo4j -p hotel-password 'RETURN 1' || exit 1"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-  knowledge-graph:
-    build:
-      context: ../../ai/knowledge-graph
-      dockerfile: Dockerfile
-    env_file: ./knowledge-graph.env
-    ports:
-      - "8094:8094"
-    depends_on:
-      neo4j:
+      langfuse-redis:
         condition: service_healthy
-      hotel-inventory:
-        condition: service_started
-      rag-pipeline:
-        condition: service_started
-      llm-gateway:
-        condition: service_started
+      clickhouse:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
 
-  # Kafka in KRaft mode (no ZooKeeper)
-  kafka:
-    image: confluentinc/cp-kafka:7.7.0
+  langfuse-web:
+    profiles: ["observability"]
+    image: langfuse/langfuse:4.36.0
+    restart: unless-stopped
     environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      <<: *langfuse-env
+      LANGFUSE_S3_MEDIA_UPLOAD_ENDPOINT: http://localhost:9090
+      LANGFUSE_S3_MEDIA_UPLOAD_INTERNAL_ENDPOINT: http://minio:9000
     ports:
-      - "9092:9092"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:9092", "--list"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-
-  # Kafka UI — browse topics and messages at http://localhost:9000
-  kafdrop:
-    image: obsidiandynamics/kafdrop:4.0.2
-    environment:
-      KAFKA_BROKERCONNECT: kafka:9092
-    ports:
-      - "9000:9000"
+      - "3000:3000"
     depends_on:
-      kafka:
+      postgres:
+        condition: service_healthy
+      langfuse-redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
   rag-pipeline:
@@ -192,33 +249,25 @@ services:
       rag-pipeline:
         condition: service_started
 
-  multi-agent:
+  # Optional Telegram polling adapter. Start explicitly after adding a fresh
+  # token to the ignored telegram-bot.env file.
+  hotel-ai-telegram-adapter:
+    profiles: ["telegram"]
     build:
-      context: ../../ai/multi-agent
+      context: ../../integrations/telegram-bot
       dockerfile: Dockerfile
-    env_file: ./multi-agent.env
-    ports:
-      - "8093:8093"
-    volumes:
-      - ../../shared:/app/shared:ro
+    env_file: ./telegram-bot.env
+    environment:
+      BOOKING_ASSISTANT_URL: http://booking-assistant:8092
+    restart: unless-stopped
     depends_on:
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-      llm-gateway:
-        condition: service_started
-      booking-ops:
-        condition: service_started
-      hotel-inventory:
-        condition: service_started
-      rag-pipeline:
-        condition: service_started
+      - booking-assistant
 
-  # ── MCP servers (Phase 6) ─────────────────────────────────────────────────
+  # ── Optional MCP adapters ─────────────────────────────────────────────────
   mcp-hotel-inventory:
+    profiles: ["mcp"]
     build:
-      context: ../../mcp/hotel-inventory
+      context: ../../integrations/mcp/hotel-inventory
       dockerfile: Dockerfile
     env_file: ./mcp-hotel-inventory.env
     ports:
@@ -227,8 +276,9 @@ services:
       - hotel-inventory
 
   mcp-booking-ops:
+    profiles: ["mcp"]
     build:
-      context: ../../mcp/booking-ops
+      context: ../../integrations/mcp/booking-ops
       dockerfile: Dockerfile
     env_file: ./mcp-booking-ops.env
     ports:
@@ -271,9 +321,12 @@ services:
     profiles: ["migrate"]
 
 volumes:
+  ollama_data:
+  langfuse_redis_data:
   postgres_data:
   qdrant_data:
   llm_usage:
-  kafka_data:
   redis_data:
-  neo4j_data:
+  clickhouse_data:
+  clickhouse_logs:
+  minio_data:

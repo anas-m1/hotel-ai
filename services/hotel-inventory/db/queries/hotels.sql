@@ -1,3 +1,8 @@
+-- name: ListAllHotels :many
+SELECT * FROM hotels
+ORDER BY name
+LIMIT $1 OFFSET $2;
+
 -- name: GetHotelByCode :one
 SELECT * FROM hotels
 WHERE hotel_code = $1;

@@ -1,28 +1,16 @@
-.PHONY: install test lint typecheck clean
+.PHONY: install test lint typecheck graph
 
-VENV = .venv
-PYTHON = $(VENV)/Scripts/python.exe
-PIP = $(VENV)/Scripts/pip.exe
-EVAL = ../../phases/04_agentic/eval
+install:
+	uv sync --locked
 
-$(VENV):
-	python -m venv $(VENV)
-	$(PYTHON) -m pip install --upgrade pip
+test:
+	uv run --locked pytest tests/ -v
 
-install: $(VENV)
-	$(PIP) install -e ".[dev]"
+lint:
+	uv run --locked ruff check src/ tests/
 
-test: install
-	$(PYTHON) -m pytest $(EVAL)/test_booking_agent.py -v
+typecheck:
+	uv run --locked mypy src/
 
-lint: install
-	$(PYTHON) -m ruff check src/
-
-typecheck: install
-	$(PYTHON) -m mypy src/
-
-clean:
-	rm -rf $(VENV)
-	rm -rf *.egg-info
-	rm -rf .pytest_cache
-	rm -rf __pycache__ src/**/__pycache__
+graph:
+	uv run --locked python scripts/export_graph.py

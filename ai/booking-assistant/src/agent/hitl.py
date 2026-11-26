@@ -33,24 +33,32 @@ async def human_approval_node(state: AgentState) -> dict[str, Any]:
     approved = approval if isinstance(approval, bool) else approval.get("approved", False)
 
     if not approved:
-        remaining = [c for c in last_message.tool_calls if c["id"] != tc["id"]]
-        filtered_message = AIMessage(
-            content=last_message.content,
-            tool_calls=remaining,
-            id=last_message.id,
-        )
-        cancel_msg = ToolMessage(
-            content="Booking was cancelled by user.",
-            tool_call_id=tc["id"],
-        )
-        return {"messages": [filtered_message, cancel_msg]}
+        # Keep the model's original calls paired with a result in the history.
+        # Cancel the whole proposed batch so no sibling side effect slips through.
+        results = [
+            ToolMessage(
+                content=(
+                    "Booking was cancelled by user."
+                    if call["name"] == "book_room"
+                    else "Tool call skipped because the booking batch was cancelled."
+                ),
+                tool_call_id=call["id"],
+            )
+            for call in last_message.tool_calls
+        ]
+        return {
+            "messages": [
+                *results,
+                AIMessage(content="Booking cancelled. No booking was created."),
+            ]
+        }
 
     return {}
 
 
 def human_approval_edge(state: AgentState) -> str:
-    """After human_approval, route to tools if there are remaining tool calls, else advance plan."""
+    """After human_approval, route to tools if there are remaining tool calls, else end."""
     last_message = state.messages[-1]
     if isinstance(last_message, AIMessage) and last_message.tool_calls:
         return "tools"
-    return "advance"
+    return "end"

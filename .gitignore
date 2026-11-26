@@ -10,8 +10,7 @@ infra/docker/*.env
 bin/
 *.exe
 
-# sqlc generated output — regenerate with `sqlc generate`
-**/internal/repository/db/
+# sqlc output is versioned; regenerate with sqlc v1.31.1.
 
 # Python
 __pycache__/
@@ -23,3 +22,21 @@ dist/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+
+# Local tooling caches and generated eval runs
+.cache/
+evals/**/runs/
+
+# Personal editor/agent state and cloud state
+.claude/
+.mcp.json
+.vscode/
+.idea/
+.DS_Store
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+*.pem
+*.key

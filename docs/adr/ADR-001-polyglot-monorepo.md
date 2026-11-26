@@ -7,7 +7,7 @@
 The system has two distinct layers: a Go-based booking domain (hotel-inventory, booking-ops, pricing-engine) and a Python-based AI layer (LangGraph agents, RAG pipeline, LiteLLM gateway, MCP servers). Decision needed on repo structure.
 
 ## Decision
-Single polyglot monorepo. Go services and Python AI services live in the same repository under `services/` and `ai/` respectively. Shared Kafka event schemas live in `shared/events/`.
+Single polyglot monorepo. Go services and Python AI services live in the same repository under `services/` and `ai/` respectively. Experimental Kafka event schemas are archived with the companion hotel-ai-lab repository.
 
 ## Why
 - `go.work` is designed for multi-module Go repos — no special tooling needed

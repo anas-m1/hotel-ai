@@ -4,7 +4,7 @@ import httpx
 import structlog
 from langchain_core.tools import tool
 
-from ..config import settings
+from config import settings
 
 log = structlog.get_logger()
 
@@ -25,15 +25,17 @@ async def _post_json(
 
 @tool
 async def search_hotels(
-    city: str | None = None,
+    city_code: str | None = None,
     query: str | None = None,
     rating: str | None = None,
     limit: int = 10,
 ) -> list[dict[str, Any]]:
-    """Search for hotels by city, text query, or rating filter."""
+    """Structured search for a known IATA city code (for example LHR), exact text, or rating filter.
+    For natural-language requests or a city name, use semantic_search_hotels instead.
+    Choose one search tool and do not call both for the same request."""
     params: dict[str, str | int] = {}
-    if city:
-        params["city"] = city
+    if city_code:
+        params["city"] = city_code
     if query:
         params["q"] = query
     if rating:
@@ -74,17 +76,13 @@ async def list_rooms(hotel_code: str, room_type: str | None = None) -> list[dict
 
 
 @tool
-async def check_availability(
-    room_id: str, check_in: str, check_out: str
-) -> dict[str, Any]:
+async def check_availability(room_id: str, check_in: str, check_out: str) -> dict[str, Any]:
     """Check if a room is available for the given dates (YYYY-MM-DD format)."""
     async with httpx.AsyncClient(base_url=settings.booking_ops_url) as client:
-        try:
-            return await _get_json(
-                client, f"/v1/availability?room_id={room_id}&check_in={check_in}&check_out={check_out}"
-            )
-        except httpx.HTTPStatusError as exc:
-            return {"available": False, "error": str(exc)}
+        return await _get_json(
+            client,
+            f"/v1/availability?room_id={room_id}&check_in={check_in}&check_out={check_out}",
+        )
 
 
 @tool
@@ -156,19 +154,19 @@ async def get_booking(booking_id: str) -> dict[str, Any]:
 @tool
 async def semantic_search_hotels(
     query: str,
-    city_code: str | None = None,
     rating: str | None = None,
     limit: int = 10,
 ) -> list[dict[str, Any]]:
-    """Search hotels by natural language description using semantic search.
-    Good for queries like 'quiet hotels with ocean view' or 'family-friendly resorts'."""
+    """Search hotels by natural language description or city name using semantic search.
+    Use for requests such as 'modern hotel in London near Hyde Park',
+    'quiet hotels with ocean view',
+    or 'family-friendly resorts'. Choose this instead of search_hotels for those requests."""
     async with httpx.AsyncClient(base_url=settings.rag_pipeline_url) as client:
         try:
             resp = await client.post(
                 "/v1/search/hotels",
                 json={
                     "query": query,
-                    "city_code": city_code,
                     "rating": rating,
                     "limit": limit,
                 },
@@ -177,8 +175,8 @@ async def semantic_search_hotels(
             data = resp.json()
             return data.get("results", [])
         except httpx.HTTPStatusError as exc:
-            log.error("semantic_search_failed", status=exc.response.status_code, error=str(exc))
-            return []
+            log.error("semantic_search_failed", status=exc.response.status_code)
+            raise
 
 
 tools = [

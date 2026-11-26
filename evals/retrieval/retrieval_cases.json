@@ -1,0 +1,8 @@
+{
+  "suite": "hotel-retrieval-smoke-v1",
+  "cases": [
+    {"id": "london_hyde_park", "query": "modern hotel near Hyde Park", "city_code": "LHR", "expected_hotel_codes": ["HTL002"]},
+    {"id": "dubai_marina", "query": "luxury hotel overlooking the marina", "city_code": "DXB", "expected_hotel_codes": ["HTL001"]},
+    {"id": "new_york_times_square", "query": "boutique hotel near Times Square", "city_code": "JFK", "expected_hotel_codes": ["HTL003"]}
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "hotels": [
+    {
+      "hotel_code": "HTL001",
+      "name": "Grand Marina Hotel",
+      "address": "1 Marina Boulevard, Dubai",
+      "city_code": "DXB",
+      "rating": "five_star",
+      "facilities": [
+        "bar",
+        "concierge",
+        "gym",
+        "pool",
+        "restaurant",
+        "spa",
+        "valet"
+      ],
+      "rooms": [
+        {
+          "room_number": "101",
+          "room_type": "double",
+          "capacity": 2,
+          "base_price": 450,
+          "currency": "USD"
+        },
+        {
+          "room_number": "102",
+          "room_type": "suite",
+          "capacity": 3,
+          "base_price": 950,
+          "currency": "USD"
+        },
+        {
+          "room_number": "201",
+          "room_type": "deluxe",
+          "capacity": 2,
+          "base_price": 650,
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "hotel_code": "HTL002",
+      "name": "City Centre Suites",
+      "address": "42 Oxford Street, London",
+      "city_code": "LHR",
+      "rating": "four_star",
+      "facilities": [
+        "bar",
+        "business-centre",
+        "concierge",
+        "gym",
+        "restaurant"
+      ],
+      "rooms": [
+        {
+          "room_number": "101",
+          "room_type": "single",
+          "capacity": 1,
+          "base_price": 180,
+          "currency": "USD"
+        },
+        {
+          "room_number": "102",
+          "room_type": "double",
+          "capacity": 2,
+          "base_price": 280,
+          "currency": "USD"
+        },
+        {
+          "room_number": "201",
+          "room_type": "twin",
+          "capacity": 2,
+          "base_price": 260,
+          "currency": "USD"
+        }
+      ]
+    },
+    {
+      "hotel_code": "HTL003",
+      "name": "Manhattan Boutique Hotel",
+      "address": "315 West 48th Street, New York",
+      "city_code": "JFK",
+      "rating": "three_star",
+      "facilities": [
+        "concierge",
+        "gym",
+        "restaurant"
+      ],
+      "rooms": [
+        {
+          "room_number": "101",
+          "room_type": "single",
+          "capacity": 1,
+          "base_price": 99,
+          "currency": "USD"
+        },
+        {
+          "room_number": "102",
+          "room_type": "double",
+          "capacity": 2,
+          "base_price": 149,
+          "currency": "USD"
+        },
+        {
+          "room_number": "103",
+          "room_type": "twin",
+          "capacity": 2,
+          "base_price": 139,
+          "currency": "USD"
+        }
+      ]
+    }
+  ]
+}

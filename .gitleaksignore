@@ -1,0 +1,3 @@
+# Historical false positive: empty QDRANT_API_KEY causes the generic rule to capture
+# the following public HOTELS_COLLECTION assignment. Exact finding only.
+4cb6e54926d62195f4a7324056e2d017e02e3918:infra/docker/rag-pipeline.env.example:generic-api-key:8

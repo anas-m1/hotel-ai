@@ -7,7 +7,7 @@
 Phase 6 introduces MCP (Model Context Protocol) servers so that Claude Desktop and other MCP clients can interact with hotel booking capabilities. MCP servers need to expose tools. They could contain business logic or delegate to existing services.
 
 ## Decision
-Each MCP server is a thin facade over an existing Go service HTTP API. `mcp/booking-ops/` calls `booking-ops:8081`. `mcp/hotel-inventory/` calls `hotel-inventory:8080`. No business logic in MCP servers; no direct database access.
+Each MCP server is a thin facade over an existing Go service HTTP API. `integrations/mcp/booking-ops/` calls `booking-ops:8081`. `integrations/mcp/hotel-inventory/` calls `hotel-inventory:8080`. No business logic in MCP servers; no direct database access.
 
 ## Why
 - Go services already enforce all business rules, validation, optimistic locking, and event logging. Duplicating this in MCP servers would create two implementations to keep in sync.

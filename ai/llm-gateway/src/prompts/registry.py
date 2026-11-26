@@ -50,12 +50,14 @@ class PromptRegistry:
             uid = f"{p['name']}:{p.get('version', 'latest')}"
             if uid not in seen:
                 seen.add(uid)
-                out.append({
-                    "name": p["name"],
-                    "version": p.get("version", "latest"),
-                    "model": p.get("model"),
-                    "description": p.get("description", ""),
-                })
+                out.append(
+                    {
+                        "name": p["name"],
+                        "version": p.get("version", "latest"),
+                        "model": p.get("model"),
+                        "description": p.get("description", ""),
+                    }
+                )
         return out
 
 

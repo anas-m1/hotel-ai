@@ -21,7 +21,4 @@ async def embed(texts: list[str]) -> list[SparseVector]:
     """Embed a batch of texts into sparse BM42 vectors."""
     loop = asyncio.get_event_loop()
     results = await loop.run_in_executor(None, lambda: list(_model().embed(texts)))
-    return [
-        SparseVector(indices=e.indices.tolist(), values=e.values.tolist())
-        for e in results
-    ]
+    return [SparseVector(indices=e.indices.tolist(), values=e.values.tolist()) for e in results]

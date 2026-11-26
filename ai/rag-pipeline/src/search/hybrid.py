@@ -1,8 +1,7 @@
 from typing import Any
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Filter, FieldCondition, MatchValue
-from qdrant_client.models import Fusion, FusionQuery, Prefetch
+from qdrant_client.models import FieldCondition, Filter, Fusion, FusionQuery, MatchValue, Prefetch
 from qdrant_client.models import SparseVector as QdrantSparseVector
 
 from ..config import settings

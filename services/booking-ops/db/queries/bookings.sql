@@ -39,7 +39,7 @@ RETURNING *;
 -- Returns count of active bookings that overlap the requested dates.
 -- Zero means the room is available.
 SELECT COUNT(*) FROM bookings
-WHERE room_id        = $1
+WHERE room_id        = sqlc.arg(room_id)
   AND status        NOT IN ('cancelled', 'no_show')
-  AND check_in_date  < $3   -- requested check_out
-  AND check_out_date > $2;  -- requested check_in
+  AND check_in_date  < sqlc.arg(check_out_date)
+  AND check_out_date > sqlc.arg(check_in_date);

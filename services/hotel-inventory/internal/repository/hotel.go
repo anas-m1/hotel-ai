@@ -2,11 +2,9 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/hotel-ai/hotel-inventory/internal/domain"
 	db "github.com/hotel-ai/hotel-inventory/internal/repository/db"
@@ -43,7 +41,7 @@ func NewHotelRepository(q *db.Queries) HotelRepository { return &postgresHotelRe
 func (r *postgresHotelRepo) GetByCode(ctx context.Context, hotelCode string) (domain.Hotel, error) {
 	row, err := r.q.GetHotelByCode(ctx, hotelCode)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNoRows(err) {
 			return domain.Hotel{}, domain.ErrNotFound
 		}
 		return domain.Hotel{}, err
@@ -131,7 +129,7 @@ func NewRoomRepository(q *db.Queries) RoomRepository { return &postgresRoomRepo{
 func (r *postgresRoomRepo) GetByID(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 	row, err := r.q.GetRoomByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNoRows(err) {
 			return domain.Room{}, domain.ErrNotFound
 		}
 		return domain.Room{}, err
@@ -192,7 +190,7 @@ func (r *postgresRoomRepo) Update(ctx context.Context, room domain.Room) (domain
 		Amenities: room.Amenities,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if isNoRows(err) {
 			return domain.Room{}, domain.ErrNotFound
 		}
 		return domain.Room{}, err

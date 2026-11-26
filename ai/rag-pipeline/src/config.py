@@ -16,12 +16,12 @@ class Settings(BaseSettings):
     hotel_inventory_url: str = "http://hotel-inventory:8080"
 
     # Local embedding models (fastembed downloads on first use, ~100 MB total)
-    dense_model: str = "BAAI/bge-small-en-v1.5"    # 384 dims
+    dense_model: str = "BAAI/bge-small-en-v1.5"  # 384 dims
     sparse_model: str = "Qdrant/bm42-all-minilm-l6-v2-attentions"
 
     # Search tuning
-    prefetch_limit: int = 50   # candidates fetched per vector type before RRF fusion
-    search_limit: int = 10     # final results returned to caller
+    prefetch_limit: int = 50  # candidates fetched per vector type before RRF fusion
+    search_limit: int = 10  # final results returned to caller
 
 
 settings = Settings()

@@ -9,57 +9,6 @@ import (
 	"context"
 )
 
-const listAllHotels = `-- name: ListAllHotels :many
-SELECT hotel_code, name, rating, address, pin_code, lat, lng, phone, fax, website_url, facilities, description, attractions, city_code, created_at, updated_at FROM hotels
-ORDER BY name
-LIMIT $1 OFFSET $2
-`
-
-type ListAllHotelsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) ListAllHotels(ctx context.Context, arg ListAllHotelsParams) ([]Hotel, error) {
-	rows, err := q.db.QueryContext(ctx, listAllHotels, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Hotel{}
-	for rows.Next() {
-		var i Hotel
-		if err := rows.Scan(
-			&i.HotelCode,
-			&i.Name,
-			&i.Rating,
-			&i.Address,
-			&i.PinCode,
-			&i.Lat,
-			&i.Lng,
-			&i.Phone,
-			&i.Fax,
-			&i.WebsiteUrl,
-			&i.Facilities,
-			&i.Description,
-			&i.Attractions,
-			&i.CityCode,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const countHotels = `-- name: CountHotels :one
 SELECT COUNT(*) FROM hotels
 `
@@ -109,6 +58,57 @@ func (q *Queries) GetHotelByCode(ctx context.Context, hotelCode string) (Hotel, 
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const listAllHotels = `-- name: ListAllHotels :many
+SELECT hotel_code, name, rating, address, pin_code, lat, lng, phone, fax, website_url, facilities, description, attractions, city_code, created_at, updated_at FROM hotels
+ORDER BY name
+LIMIT $1 OFFSET $2
+`
+
+type ListAllHotelsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAllHotels(ctx context.Context, arg ListAllHotelsParams) ([]Hotel, error) {
+	rows, err := q.db.QueryContext(ctx, listAllHotels, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Hotel{}
+	for rows.Next() {
+		var i Hotel
+		if err := rows.Scan(
+			&i.HotelCode,
+			&i.Name,
+			&i.Rating,
+			&i.Address,
+			&i.PinCode,
+			&i.Lat,
+			&i.Lng,
+			&i.Phone,
+			&i.Fax,
+			&i.WebsiteUrl,
+			&i.Facilities,
+			&i.Description,
+			&i.Attractions,
+			&i.CityCode,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listHotelsByCity = `-- name: ListHotelsByCity :many

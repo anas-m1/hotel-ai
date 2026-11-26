@@ -3,10 +3,10 @@ import uvicorn
 from fastapi import FastAPI
 from langgraph.checkpoint.memory import MemorySaver
 
-from .agent.graph import build_graph
-from .agent.instance import set_graph
-from .config import settings
-from .router.chat import router as chat_router
+from agent.graph import build_graph
+from agent.instance import set_graph
+from config import settings
+from router.chat import router as chat_router
 
 structlog.configure(
     processors=[
@@ -39,7 +39,9 @@ async def on_startup() -> None:
     try:
         from langgraph.checkpoint.redis.aio import AsyncRedisSaver
 
-        checkpointer = AsyncRedisSaver.from_url(settings.redis_url)
+        # The installed langgraph-checkpoint-redis exposes the URL as its
+        # constructor argument; its `from_url` attribute is not available.
+        checkpointer = AsyncRedisSaver(settings.redis_url)
         await checkpointer.asetup()
         set_graph(build_graph(checkpointer))
         log.info("checkpointer_redis", url=settings.redis_url)
@@ -51,4 +53,4 @@ async def on_startup() -> None:
 
 
 if __name__ == "__main__":
-    uvicorn.run("src.main:app", host="0.0.0.0", port=settings.port, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=settings.port, reload=True)

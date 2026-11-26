@@ -1,0 +1,1007 @@
+{
+  "info": {
+    "name": "Hotel AI - Complete API Collection",
+    "description": "Comprehensive Postman collection for all Hotel AI microservices.\n\n## Services\n- **hotel-inventory** (Go, port 8080) — Hotels, rooms, locations\n- **booking-ops** (Go, port 8081) — Guests, bookings, availability\n- **rag-pipeline** (Python, port 8091) — Vector search\n- **llm-gateway** (Python, port 8090) — LLM proxy, prompts, usage\n- **booking-assistant** (Python, port 8092) — LangGraph agent\n- **knowledge-graph** (Python, port 8094) — GraphRAG search\n- **multi-agent** (Python, port 8093) — Supervisor + workers\n\n## Setup\n1. `docker compose -f infra/docker/docker-compose.yml up -d`\n2. Seed DB: `Get-Content infra/docker\\seed.sql | docker exec -i docker-postgres-1 psql -U hotel -d hotel_inventory`\n3. Import this collection into Postman\n4. Set the `base_url_*` variables in the collection or environment",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_hotel_inventory", "value": "http://localhost:8080", "type": "string" },
+    { "key": "base_booking_ops", "value": "http://localhost:8081", "type": "string" },
+    { "key": "base_llm_gateway", "value": "http://localhost:8090", "type": "string" },
+    { "key": "base_rag_pipeline", "value": "http://localhost:8091", "type": "string" },
+    { "key": "base_booking_assistant", "value": "http://localhost:8092", "type": "string" },
+    { "key": "base_multi_agent", "value": "http://localhost:8093", "type": "string" },
+    { "key": "base_knowledge_graph", "value": "http://localhost:8094", "type": "string" },
+    { "key": "hotel_code", "value": "HTL001", "type": "string" },
+    { "key": "room_id", "value": "", "type": "string" },
+    { "key": "guest_id", "value": "", "type": "string" },
+    { "key": "booking_id", "value": "", "type": "string" },
+    { "key": "session_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "hotel-inventory",
+      "description": "Go microservice for hotel, room, and location management. Port 8080.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_hotel_inventory}}/healthz", "host": ["{{base_hotel_inventory}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Locations",
+          "item": [
+            {
+              "name": "GET /v1/locations",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_hotel_inventory}}/v1/locations?county=AE",
+                  "host": ["{{base_hotel_inventory}}"],
+                  "path": ["v1", "locations"],
+                  "query": [{ "key": "county", "value": "AE", "description": "County code (e.g. AE, GB, US)" }]
+                }
+              }
+            },
+            {
+              "name": "GET /v1/locations/{cityCode}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_hotel_inventory}}/v1/locations/DXB", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "locations", "DXB"] }
+              }
+            },
+            {
+              "name": "PUT /v1/locations/{cityCode}",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"city_name\": \"Paris\",\n  \"county_code\": \"FR\",\n  \"county_name\": \"France\"\n}"
+                },
+                "url": { "raw": "{{base_hotel_inventory}}/v1/locations/CDG", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "locations", "CDG"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hotels",
+          "item": [
+            {
+              "name": "GET /v1/hotels",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_hotel_inventory}}/v1/hotels?limit=10",
+                  "host": ["{{base_hotel_inventory}}"],
+                  "path": ["v1", "hotels"],
+                  "query": [
+                    { "key": "city", "value": "", "description": "Filter by city code (e.g. DXB)", "disabled": true },
+                    { "key": "rating", "value": "", "description": "Filter by rating (e.g. five_star)", "disabled": true },
+                    { "key": "q", "value": "", "description": "Full-text search query", "disabled": true },
+                    { "key": "limit", "value": "10", "description": "Max results" },
+                    { "key": "offset", "value": "0", "description": "Offset for pagination", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET /v1/hotels/{code}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "hotels", "{{hotel_code}}"] }
+              }
+            },
+            {
+              "name": "PUT /v1/hotels/{code}",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Grand Marina Hotel\",\n  \"city_code\": \"DXB\",\n  \"rating\": \"five_star\",\n  \"address\": \"1 Marina Boulevard, Dubai\",\n  \"description\": \"Luxury hotel overlooking the marina.\",\n  \"facilities\": \"pool,spa,gym,restaurant,bar\",\n  \"attractions\": \"Dubai Marina Walk, JBR Beach\"\n}"
+                },
+                "url": { "raw": "{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "hotels", "{{hotel_code}}"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rooms",
+          "item": [
+            {
+              "name": "GET /v1/hotels/{code}/rooms",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms",
+                  "host": ["{{base_hotel_inventory}}"],
+                  "path": ["v1", "hotels", "{{hotel_code}}", "rooms"],
+                  "query": [{ "key": "type", "value": "", "description": "Filter by type (e.g. suite, double)", "disabled": true }]
+                }
+              }
+            },
+            {
+              "name": "POST /v1/hotels/{code}/rooms",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"room_number\": \"301\",\n  \"room_type\": \"suite\",\n  \"base_price\": 500.00,\n  \"currency\": \"USD\",\n  \"capacity\": 3,\n  \"amenities\": [\"wifi\", \"minibar\", \"sea-view\"]\n}"
+                },
+                "url": { "raw": "{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "hotels", "{{hotel_code}}", "rooms"] }
+              }
+            },
+            {
+              "name": "GET /v1/hotels/{code}/rooms/{roomID}/availability",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms/{{room_id}}/availability?check_in=2026-08-01&check_out=2026-08-05",
+                  "host": ["{{base_hotel_inventory}}"],
+                  "path": ["v1", "hotels", "{{hotel_code}}", "rooms", "{{room_id}}", "availability"],
+                  "query": [
+                    { "key": "check_in", "value": "2026-08-01", "description": "YYYY-MM-DD" },
+                    { "key": "check_out", "value": "2026-08-05", "description": "YYYY-MM-DD" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET /v1/rooms/{id}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_hotel_inventory}}/v1/rooms/{{room_id}}", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "rooms", "{{room_id}}"] }
+              }
+            },
+            {
+              "name": "PUT /v1/rooms/{id}",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"base_price\": 475.00,\n  \"amenities\": [\"wifi\", \"minibar\", \"sea-view\", \"balcony\"]\n}"
+                },
+                "url": { "raw": "{{base_hotel_inventory}}/v1/rooms/{{room_id}}", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "rooms", "{{room_id}}"] }
+              }
+            },
+            {
+              "name": "DELETE /v1/rooms/{id}",
+              "request": {
+                "method": "DELETE",
+                "url": { "raw": "{{base_hotel_inventory}}/v1/rooms/{{room_id}}", "host": ["{{base_hotel_inventory}}"], "path": ["v1", "rooms", "{{room_id}}"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "booking-ops",
+      "description": "Go microservice for guest profiles, bookings, and availability. Port 8081.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_ops}}/healthz", "host": ["{{base_booking_ops}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Guests",
+          "item": [
+            {
+              "name": "POST /v1/guests",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.id) { pm.collectionVariables.set('guest_id', json.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"phone\": \"+1-555-0100\",\n  \"nationality\": \"US\",\n  \"passport_no\": \"AB123456\"\n}"
+                },
+                "url": { "raw": "{{base_booking_ops}}/v1/guests", "host": ["{{base_booking_ops}}"], "path": ["v1", "guests"] }
+              }
+            },
+            {
+              "name": "GET /v1/guests/{id}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_ops}}/v1/guests/{{guest_id}}", "host": ["{{base_booking_ops}}"], "path": ["v1", "guests", "{{guest_id}}"] }
+              }
+            },
+            {
+              "name": "GET /v1/guests/by-email/{email}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_ops}}/v1/guests/by-email/john@example.com", "host": ["{{base_booking_ops}}"], "path": ["v1", "guests", "by-email", "john@example.com"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bookings",
+          "item": [
+            {
+              "name": "POST /v1/bookings",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.id) { pm.collectionVariables.set('booking_id', json.id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"guest_id\": \"{{guest_id}}\",\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"room_id\": \"{{room_id}}\",\n  \"check_in_date\": \"2026-08-01\",\n  \"check_out_date\": \"2026-08-05\",\n  \"total_price\": \"1800.00\",\n  \"currency\": \"USD\",\n  \"special_requests\": \"Window seat please\"\n}"
+                },
+                "url": { "raw": "{{base_booking_ops}}/v1/bookings", "host": ["{{base_booking_ops}}"], "path": ["v1", "bookings"] }
+              }
+            },
+            {
+              "name": "GET /v1/bookings/{id}",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_ops}}/v1/bookings/{{booking_id}}", "host": ["{{base_booking_ops}}"], "path": ["v1", "bookings", "{{booking_id}}"] }
+              }
+            },
+            {
+              "name": "DELETE /v1/bookings/{id}",
+              "request": {
+                "method": "DELETE",
+                "url": { "raw": "{{base_booking_ops}}/v1/bookings/{{booking_id}}", "host": ["{{base_booking_ops}}"], "path": ["v1", "bookings", "{{booking_id}}"] }
+              }
+            },
+            {
+              "name": "POST /v1/bookings/{id}/status",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"confirmed\",\n  \"version\": 1\n}"
+                },
+                "url": { "raw": "{{base_booking_ops}}/v1/bookings/{{booking_id}}/status", "host": ["{{base_booking_ops}}"], "path": ["v1", "bookings", "{{booking_id}}", "status"] }
+              }
+            },
+            {
+              "name": "GET /v1/guests/{id}/bookings",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_booking_ops}}/v1/guests/{{guest_id}}/bookings?limit=10",
+                  "host": ["{{base_booking_ops}}"],
+                  "path": ["v1", "guests", "{{guest_id}}", "bookings"],
+                  "query": [
+                    { "key": "limit", "value": "10", "description": "Max results" },
+                    { "key": "offset", "value": "0", "description": "Offset", "disabled": true }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "GET /v1/hotels/{code}/bookings",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_ops}}/v1/hotels/{{hotel_code}}/bookings", "host": ["{{base_booking_ops}}"], "path": ["v1", "hotels", "{{hotel_code}}", "bookings"] }
+              }
+            },
+            {
+              "name": "GET /v1/availability",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-08-01&check_out=2026-08-05",
+                  "host": ["{{base_booking_ops}}"],
+                  "path": ["v1", "availability"],
+                  "query": [
+                    { "key": "room_id", "value": "{{room_id}}", "description": "Room UUID" },
+                    { "key": "check_in", "value": "2026-08-01", "description": "YYYY-MM-DD" },
+                    { "key": "check_out", "value": "2026-08-05", "description": "YYYY-MM-DD" }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "rag-pipeline",
+      "description": "Python service for hybrid dense+sparse hotel search over Qdrant. Port 8091.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_rag_pipeline}}/healthz", "host": ["{{base_rag_pipeline}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search",
+          "item": [
+            {
+              "name": "POST /v1/search/hotels",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"query\": \"quiet hotel with ocean view\",\n  \"city_code\": \"DXB\",\n  \"rating\": \"five_star\",\n  \"limit\": 5\n}"
+                },
+                "url": { "raw": "{{base_rag_pipeline}}/v1/search/hotels", "host": ["{{base_rag_pipeline}}"], "path": ["v1", "search", "hotels"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Indexing",
+          "item": [
+            {
+              "name": "POST /v1/index/hotels",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{base_rag_pipeline}}/v1/index/hotels", "host": ["{{base_rag_pipeline}}"], "path": ["v1", "index", "hotels"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "llm-gateway",
+      "description": "Python LiteLLM proxy for LLM routing, prompt registry, and cost tracking. Port 8090.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_llm_gateway}}/healthz", "host": ["{{base_llm_gateway}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "item": [
+            {
+              "name": "POST /v1/chat/completions",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"model\": \"groq/llama-3.1-8b-instant\",\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n    {\"role\": \"user\", \"content\": \"What are the best hotels in Dubai?\"}\n  ],\n  \"max_tokens\": 200,\n  \"temperature\": 0.7\n}"
+                },
+                "url": { "raw": "{{base_llm_gateway}}/v1/chat/completions", "host": ["{{base_llm_gateway}}"], "path": ["v1", "chat", "completions"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Models & Prompts",
+          "item": [
+            {
+              "name": "GET /v1/models",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_llm_gateway}}/v1/models", "host": ["{{base_llm_gateway}}"], "path": ["v1", "models"] }
+              }
+            },
+            {
+              "name": "GET /v1/prompts",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_llm_gateway}}/v1/prompts", "host": ["{{base_llm_gateway}}"], "path": ["v1", "prompts"] }
+              }
+            },
+            {
+              "name": "GET /v1/prompts/{name}",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_llm_gateway}}/v1/prompts/hotel-assistant",
+                  "host": ["{{base_llm_gateway}}"],
+                  "path": ["v1", "prompts", "hotel-assistant"],
+                  "query": [{ "key": "version", "value": "", "description": "Optional version", "disabled": true }]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usage",
+          "item": [
+            {
+              "name": "GET /v1/usage",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_llm_gateway}}/v1/usage?last=20",
+                  "host": ["{{base_llm_gateway}}"],
+                  "path": ["v1", "usage"],
+                  "query": [{ "key": "last", "value": "20", "description": "Number of recent entries" }]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "booking-assistant",
+      "description": "Python LangGraph ReAct agent for hotel search, availability, and reservations. Port 8092.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_booking_assistant}}/healthz", "host": ["{{base_booking_assistant}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "item": [
+            {
+              "name": "POST /v1/chat",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var json = pm.response.json();",
+                      "if (json.session_id) { pm.collectionVariables.set('session_id', json.session_id); }"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"What hotels do you have in Dubai?\"\n}"
+                },
+                "url": { "raw": "{{base_booking_assistant}}/v1/chat", "host": ["{{base_booking_assistant}}"], "path": ["v1", "chat"] }
+              }
+            },
+            {
+              "name": "POST /v1/chat (multi-turn)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"Show me rooms at that hotel\",\n  \"session_id\": \"{{session_id}}\"\n}"
+                },
+                "url": { "raw": "{{base_booking_assistant}}/v1/chat", "host": ["{{base_booking_assistant}}"], "path": ["v1", "chat"] }
+              }
+            },
+            {
+              "name": "POST /v1/chat/resume",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"session_id\": \"{{session_id}}\",\n  \"approved\": true\n}"
+                },
+                "url": { "raw": "{{base_booking_assistant}}/v1/chat/resume", "host": ["{{base_booking_assistant}}"], "path": ["v1", "chat", "resume"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "multi-agent",
+      "description": "Python supervisor + worker agent system with Kafka event publishing. Port 8093.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_multi_agent}}/healthz", "host": ["{{base_multi_agent}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chat",
+          "item": [
+            {
+              "name": "POST /v1/chat",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"Find me a luxury hotel in Dubai\",\n  \"session_id\": \"\"\n}"
+                },
+                "url": { "raw": "{{base_multi_agent}}/v1/chat", "host": ["{{base_multi_agent}}"], "path": ["v1", "chat"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "knowledge-graph",
+      "description": "Python GraphRAG service with Neo4j + Qdrant hybrid search. Port 8094.",
+      "item": [
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /healthz",
+              "request": {
+                "method": "GET",
+                "url": { "raw": "{{base_knowledge_graph}}/healthz", "host": ["{{base_knowledge_graph}}"], "path": ["healthz"] }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search",
+          "item": [
+            {
+              "name": "GET /v1/search",
+              "request": {
+                "method": "GET",
+                "url": {
+                  "raw": "{{base_knowledge_graph}}/v1/search?query=quiet+hotel+with+pool&limit=10",
+                  "host": ["{{base_knowledge_graph}}"],
+                  "path": ["v1", "search"],
+                  "query": [
+                    { "key": "query", "value": "quiet hotel with pool", "description": "Natural language query" },
+                    { "key": "limit", "value": "10", "description": "Max results (max 50)" }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "POST /v1/admin/ingest",
+              "request": {
+                "method": "POST",
+                "url": { "raw": "{{base_knowledge_graph}}/v1/admin/ingest", "host": ["{{base_knowledge_graph}}"], "path": ["v1", "admin", "ingest"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flows",
+      "description": "Pre-configured request sequences that exercise complete user journeys. Run steps in order — each step captures variables for the next.",
+      "item": [
+        {
+          "name": "1. Complete Booking Lifecycle",
+          "description": "Full journey: create guest -> search -> list rooms -> check availability -> book -> confirm -> check-in -> check-out -> verify. Exercises the entire booking state machine.",
+          "item": [
+            {
+              "name": "Step 1: Create Guest",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('guest_id',j.id);", "pm.test('200', function(){ pm.response.to.have.status(200); });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"lifecycle@example.com\",\n  \"first_name\": \"Lifecycle\",\n  \"last_name\": \"Test\",\n  \"phone\": \"+1-555-0001\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/guests","host":["{{base_booking_ops}}"],"path":["v1","guests"]} }
+            },
+            {
+              "name": "Step 2: Search Hotels",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels?limit=5","host":["{{base_hotel_inventory}}"],"path":["v1","hotels"],"query":[{"key":"limit","value":"5"}]} }
+            },
+            {
+              "name": "Step 3: Get Hotel Details",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}"]} }
+            },
+            {
+              "name": "Step 4: List Rooms",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.length>0 && j[0].id) pm.collectionVariables.set('room_id',j[0].id);"] } }],
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}","rooms"]} }
+            },
+            {
+              "name": "Step 5: Check Availability",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-09-01&check_out=2026-09-04","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-09-01"},{"key":"check_out","value":"2026-09-04"}]} }
+            },
+            {
+              "name": "Step 6: Create Booking",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) { pm.collectionVariables.set('booking_id',j.id); pm.collectionVariables.set('booking_version', j.version || 1); }", "pm.test('200', function(){ pm.response.to.have.status(200); });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"guest_id\": \"{{guest_id}}\",\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"room_id\": \"{{room_id}}\",\n  \"check_in_date\": \"2026-09-01\",\n  \"check_out_date\": \"2026-09-04\",\n  \"total_price\": \"1350.00\",\n  \"currency\": \"USD\",\n  \"special_requests\": \"Late check-in\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Step 7: Verify Status = pending",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}"]} }
+            },
+            {
+              "name": "Step 8: Confirm Booking (pending -> confirmed)",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.version) pm.collectionVariables.set('booking_version',j.version);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"status\": \"confirmed\",\n  \"version\": {{booking_version}}\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}/status","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}","status"]} }
+            },
+            {
+              "name": "Step 9: Check-in (confirmed -> checked_in)",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.version) pm.collectionVariables.set('booking_version',j.version);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"status\": \"checked_in\",\n  \"version\": {{booking_version}}\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}/status","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}","status"]} }
+            },
+            {
+              "name": "Step 10: Check-out (checked_in -> checked_out)",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.version) pm.collectionVariables.set('booking_version',j.version);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"status\": \"checked_out\",\n  \"version\": {{booking_version}}\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}/status","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}","status"]} }
+            },
+            {
+              "name": "Step 11: Verify Final State",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}"]} }
+            },
+            {
+              "name": "Step 12: Verify Room Available Again",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-09-01&check_out=2026-09-04","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-09-01"},{"key":"check_out","value":"2026-09-04"}]} }
+            }
+          ]
+        },
+        {
+          "name": "2. Book & Cancel",
+          "description": "Book a room, verify it's blocked, cancel the booking, verify the room is available again.",
+          "item": [
+            {
+              "name": "Step 1: Create Guest",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('guest_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"cancel@example.com\",\n  \"first_name\": \"Cancel\",\n  \"last_name\": \"Tester\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/guests","host":["{{base_booking_ops}}"],"path":["v1","guests"]} }
+            },
+            {
+              "name": "Step 2: List Rooms & Capture ID",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.length>0 && j[0].id) pm.collectionVariables.set('room_id',j[0].id);"] } }],
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}","rooms"]} }
+            },
+            {
+              "name": "Step 3: Check Availability (should be true)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-10-01&check_out=2026-10-03","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-10-01"},{"key":"check_out","value":"2026-10-03"}]} }
+            },
+            {
+              "name": "Step 4: Create Booking",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('booking_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"guest_id\": \"{{guest_id}}\",\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"room_id\": \"{{room_id}}\",\n  \"check_in_date\": \"2026-10-01\",\n  \"check_out_date\": \"2026-10-03\",\n  \"total_price\": \"900.00\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Step 5: Check Availability (should be false)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-10-01&check_out=2026-10-03","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-10-01"},{"key":"check_out","value":"2026-10-03"}]} }
+            },
+            {
+              "name": "Step 6: Cancel Booking",
+              "request": { "method": "DELETE", "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}"]} }
+            },
+            {
+              "name": "Step 7: Verify Cancellation",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/bookings/{{booking_id}}","host":["{{base_booking_ops}}"],"path":["v1","bookings","{{booking_id}}"]} }
+            },
+            {
+              "name": "Step 8: Check Availability (should be true again)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-10-01&check_out=2026-10-03","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-10-01"},{"key":"check_out","value":"2026-10-03"}]} }
+            }
+          ]
+        },
+        {
+          "name": "3. Multi-Guest Booking",
+          "description": "Two guests book different rooms at the same hotel. Tests guest isolation and hotel-level booking queries.",
+          "item": [
+            {
+              "name": "Step 1: Create Guest A",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('guest_a_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"alice@example.com\",\n  \"first_name\": \"Alice\",\n  \"last_name\": \"Johnson\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/guests","host":["{{base_booking_ops}}"],"path":["v1","guests"]} }
+            },
+            {
+              "name": "Step 2: Create Guest B",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('guest_b_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"bob@example.com\",\n  \"first_name\": \"Bob\",\n  \"last_name\": \"Williams\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/guests","host":["{{base_booking_ops}}"],"path":["v1","guests"]} }
+            },
+            {
+              "name": "Step 3: List Rooms",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.length>=2) { pm.collectionVariables.set('room_a_id',j[0].id); pm.collectionVariables.set('room_b_id',j[1].id); }"] } }],
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}","rooms"]} }
+            },
+            {
+              "name": "Step 4: Book Room A for Alice",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('booking_a_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"guest_id\": \"{{guest_a_id}}\",\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"room_id\": \"{{room_a_id}}\",\n  \"check_in_date\": \"2026-11-01\",\n  \"check_out_date\": \"2026-11-03\",\n  \"total_price\": \"900.00\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Step 5: Book Room B for Bob",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('booking_b_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"guest_id\": \"{{guest_b_id}}\",\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"room_id\": \"{{room_b_id}}\",\n  \"check_in_date\": \"2026-11-01\",\n  \"check_out_date\": \"2026-11-03\",\n  \"total_price\": \"1200.00\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Step 6: Alice's Bookings",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/guests/{{guest_a_id}}/bookings","host":["{{base_booking_ops}}"],"path":["v1","guests","{{guest_a_id}}","bookings"]} }
+            },
+            {
+              "name": "Step 7: Bob's Bookings",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/guests/{{guest_b_id}}/bookings","host":["{{base_booking_ops}}"],"path":["v1","guests","{{guest_b_id}}","bookings"]} }
+            },
+            {
+              "name": "Step 8: All Bookings at Hotel",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/hotels/{{hotel_code}}/bookings","host":["{{base_booking_ops}}"],"path":["v1","hotels","{{hotel_code}}","bookings"]} }
+            }
+          ]
+        },
+        {
+          "name": "4. Room Availability Sweep",
+          "description": "Check availability for all rooms at a hotel across multiple date ranges. Finds the best available room.",
+          "item": [
+            {
+              "name": "Step 1: List All Rooms",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); var ids=[]; j.forEach(function(r){ids.push(r.id)}); pm.collectionVariables.set('all_room_ids', JSON.stringify(ids)); pm.collectionVariables.set('room_count', ids.length);"] } }],
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}","rooms"]} }
+            },
+            {
+              "name": "Step 2: Check Room 1 (Aug 1-3)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-08-01&check_out=2026-08-03","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-08-01"},{"key":"check_out","value":"2026-08-03"}]} }
+            },
+            {
+              "name": "Step 3: Check Room 1 (Aug 5-10)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-08-05&check_out=2026-08-10","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-08-05"},{"key":"check_out","value":"2026-08-10"}]} }
+            },
+            {
+              "name": "Step 4: Check Room 1 (Aug 15-20)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id={{room_id}}&check_in=2026-08-15&check_out=2026-08-20","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"{{room_id}}"},{"key":"check_in","value":"2026-08-15"},{"key":"check_out","value":"2026-08-20"}]} }
+            },
+            {
+              "name": "Step 5: Inventory Availability (proxy endpoint)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/{{hotel_code}}/rooms/{{room_id}}/availability?check_in=2026-08-01&check_out=2026-08-05","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","{{hotel_code}}","rooms","{{room_id}}","availability"],"query":[{"key":"check_in","value":"2026-08-01"},{"key":"check_out","value":"2026-08-05"}]} }
+            }
+          ]
+        },
+        {
+          "name": "5. Hotel CRUD Management",
+          "description": "Create a location, create a hotel, add rooms, update room price, verify, then soft-delete the room.",
+          "item": [
+            {
+              "name": "Step 1: Create Location",
+              "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"city_name\": \"Tokyo\",\n  \"county_code\": \"JP\",\n  \"county_name\": \"Japan\"\n}"}, "url": {"raw":"{{base_hotel_inventory}}/v1/locations/TYO","host":["{{base_hotel_inventory}}"],"path":["v1","locations","TYO"]} }
+            },
+            {
+              "name": "Step 2: Get Location",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/locations/TYO","host":["{{base_hotel_inventory}}"],"path":["v1","locations","TYO"]} }
+            },
+            {
+              "name": "Step 3: Create Hotel",
+              "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"name\": \"Sakura Grand Hotel\",\n  \"city_code\": \"TYO\",\n  \"rating\": \"four_star\",\n  \"address\": \"1-2-3 Shibuya, Tokyo\",\n  \"description\": \"Modern hotel in the heart of Shibuya.\",\n  \"facilities\": \"wifi,gym,restaurant,bar\",\n  \"attractions\": \"Shibuya Crossing, Harajuku, Meiji Shrine\"\n}"}, "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/HTL004","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","HTL004"]} }
+            },
+            {
+              "name": "Step 4: Verify Hotel",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/HTL004","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","HTL004"]} }
+            },
+            {
+              "name": "Step 5: Add Room",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('new_room_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"room_number\": \"101\",\n  \"room_type\": \"double\",\n  \"base_price\": 200.00,\n  \"currency\": \"JPY\",\n  \"capacity\": 2,\n  \"amenities\": [\"wifi\", \"city-view\"]\n}"}, "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/HTL004/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","HTL004","rooms"]} }
+            },
+            {
+              "name": "Step 6: Update Room Price",
+              "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"base_price\": 220.00\n}"}, "url": {"raw":"{{base_hotel_inventory}}/v1/rooms/{{new_room_id}}","host":["{{base_hotel_inventory}}"],"path":["v1","rooms","{{new_room_id}}"]} }
+            },
+            {
+              "name": "Step 7: Verify Updated Room",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/rooms/{{new_room_id}}","host":["{{base_hotel_inventory}}"],"path":["v1","rooms","{{new_room_id}}"]} }
+            },
+            {
+              "name": "Step 8: Soft-Delete Room",
+              "request": { "method": "DELETE", "url": {"raw":"{{base_hotel_inventory}}/v1/rooms/{{new_room_id}}","host":["{{base_hotel_inventory}}"],"path":["v1","rooms","{{new_room_id}}"]} }
+            }
+          ]
+        },
+        {
+          "name": "6. Semantic Search Comparison",
+          "description": "Compare keyword search (hotel-inventory) with semantic search (rag-pipeline) for the same query.",
+          "item": [
+            {
+              "name": "Step 1: Keyword Search (all hotels)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels?limit=10","host":["{{base_hotel_inventory}}"],"path":["v1","hotels"],"query":[{"key":"limit","value":"10"}]} }
+            },
+            {
+              "name": "Step 2: Keyword Search (by city)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels?city=DXB","host":["{{base_hotel_inventory}}"],"path":["v1","hotels"],"query":[{"key":"city","value":"DXB"}]} }
+            },
+            {
+              "name": "Step 3: Keyword Search (by text)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels?q=marina","host":["{{base_hotel_inventory}}"],"path":["v1","hotels"],"query":[{"key":"q","value":"marina"}]} }
+            },
+            {
+              "name": "Step 4: Semantic Search (natural language)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"query\": \"quiet luxury hotel with ocean view and spa\",\n  \"limit\": 5\n}"}, "url": {"raw":"{{base_rag_pipeline}}/v1/search/hotels","host":["{{base_rag_pipeline}}"],"path":["v1","search","hotels"]} }
+            },
+            {
+              "name": "Step 5: Semantic Search (family-friendly)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"query\": \"family-friendly hotel near city center with good transport\",\n  \"limit\": 5\n}"}, "url": {"raw":"{{base_rag_pipeline}}/v1/search/hotels","host":["{{base_rag_pipeline}}"],"path":["v1","search","hotels"]} }
+            },
+            {
+              "name": "Step 6: GraphRAG Search",
+              "request": { "method": "GET", "url": {"raw":"{{base_knowledge_graph}}/v1/search?query=luxury+hotel+with+pool+near+beach&limit=5","host":["{{base_knowledge_graph}}"],"path":["v1","search"],"query":[{"key":"query","value":"luxury hotel with pool near beach"},{"key":"limit","value":"5"}]} }
+            }
+          ]
+        },
+        {
+          "name": "7. Agent Extended Conversation",
+          "description": "6-turn conversation with the AI booking assistant testing search, details, rooms, availability, and booking request.",
+          "item": [
+            {
+              "name": "Turn 1: Search hotels in Dubai",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.session_id) pm.collectionVariables.set('session_id',j.session_id);", "pm.test('Reply not empty', function(){ pm.expect(j.reply).to.be.a('string').and.not.be.empty; }); pm.test('Session ID set', function(){ pm.expect(j.session_id).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"What hotels do you have in Dubai?\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            },
+            {
+              "name": "Turn 2: Tell me about the first one",
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reply not empty', function(){ pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"Tell me more about the first hotel\",\n  \"session_id\": \"{{session_id}}\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            },
+            {
+              "name": "Turn 3: What rooms does it have?",
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reply not empty', function(){ pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"What rooms are available there?\",\n  \"session_id\": \"{{session_id}}\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            },
+            {
+              "name": "Turn 4: Check availability for specific dates",
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reply not empty', function(){ pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"Is a double room available from August 10 to August 15, 2026?\",\n  \"session_id\": \"{{session_id}}\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            },
+            {
+              "name": "Turn 5: How much would that cost?",
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reply not empty', function(){ pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"How much would that cost for 5 nights?\",\n  \"session_id\": \"{{session_id}}\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            },
+            {
+              "name": "Turn 6: Compare with London hotels",
+              "event": [{ "listen": "test", "script": { "exec": ["pm.test('Reply not empty', function(){ pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty; });"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"What about hotels in London? Show me options.\",\n  \"session_id\": \"{{session_id}}\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            }
+          ]
+        },
+        {
+          "name": "8. LLM Cost Tracking",
+          "description": "Make several LLM calls, then check usage stats to verify token counting and cost logging.",
+          "item": [
+            {
+              "name": "Step 1: Short Completion",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"model\": \"groq/llama-3.1-8b-instant\",\n  \"messages\": [{\"role\": \"user\", \"content\": \"Say hi\"}],\n  \"max_tokens\": 10\n}"}, "url": {"raw":"{{base_llm_gateway}}/v1/chat/completions","host":["{{base_llm_gateway}}"],"path":["v1","chat","completions"]} }
+            },
+            {
+              "name": "Step 2: Medium Completion",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"model\": \"groq/llama-3.1-8b-instant\",\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"You are a hotel expert.\"},\n    {\"role\": \"user\", \"content\": \"Describe the top 3 luxury hotels in Dubai in detail.\"}\n  ],\n  \"max_tokens\": 200\n}"}, "url": {"raw":"{{base_llm_gateway}}/v1/chat/completions","host":["{{base_llm_gateway}}"],"path":["v1","chat","completions"]} }
+            },
+            {
+              "name": "Step 3: Long Completion",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"model\": \"groq/llama-3.1-8b-instant\",\n  \"messages\": [\n    {\"role\": \"system\", \"content\": \"You are a travel advisor.\"},\n    {\"role\": \"user\", \"content\": \"Write a detailed 3-day itinerary for a luxury trip to Dubai including hotel recommendations, restaurants, activities, and estimated costs.\"}\n  ],\n  \"max_tokens\": 500\n}"}, "url": {"raw":"{{base_llm_gateway}}/v1/chat/completions","host":["{{base_llm_gateway}}"],"path":["v1","chat","completions"]} }
+            },
+            {
+              "name": "Step 4: Check Usage Stats",
+              "request": { "method": "GET", "url": {"raw":"{{base_llm_gateway}}/v1/usage?last=10","host":["{{base_llm_gateway}}"],"path":["v1","usage"],"query":[{"key":"last","value":"10"}]} }
+            },
+            {
+              "name": "Step 5: List Available Models",
+              "request": { "method": "GET", "url": {"raw":"{{base_llm_gateway}}/v1/models","host":["{{base_llm_gateway}}"],"path":["v1","models"]} }
+            }
+          ]
+        },
+        {
+          "name": "9. Error Handling & Validation",
+          "description": "Test error responses: missing required fields, invalid UUIDs, 404s, and conflict detection.",
+          "item": [
+            {
+              "name": "Create Guest (valid)",
+              "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.id) pm.collectionVariables.set('guest_id',j.id);"] } }],
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"error-test@example.com\",\n  \"first_name\": \"Error\",\n  \"last_name\": \"Tester\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/guests","host":["{{base_booking_ops}}"],"path":["v1","guests"]} }
+            },
+            {
+              "name": "Get Non-existent Guest (404)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/guests/00000000-0000-0000-0000-000000000000","host":["{{base_booking_ops}}"],"path":["v1","guests","00000000-0000-0000-0000-000000000000"]} }
+            },
+            {
+              "name": "Get Non-existent Hotel (404)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/ZZZ999","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","ZZZ999"]} }
+            },
+            {
+              "name": "Create Booking Missing Fields (400)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"hotel_code\": \"\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Create Booking Invalid Date (400)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"hotel_code\": \"{{hotel_code}}\",\n  \"total_price\": \"100.00\",\n  \"check_in_date\": \"not-a-date\",\n  \"check_out_date\": \"2026-08-05\"\n}"}, "url": {"raw":"{{base_booking_ops}}/v1/bookings","host":["{{base_booking_ops}}"],"path":["v1","bookings"]} }
+            },
+            {
+              "name": "Check Availability Invalid UUID (400)",
+              "request": { "method": "GET", "url": {"raw":"{{base_booking_ops}}/v1/availability?room_id=not-a-uuid&check_in=2026-08-01&check_out=2026-08-05","host":["{{base_booking_ops}}"],"path":["v1","availability"],"query":[{"key":"room_id","value":"not-a-uuid"},{"key":"check_in","value":"2026-08-01"},{"key":"check_out","value":"2026-08-05"}]} }
+            },
+            {
+              "name": "List Rooms Non-existent Hotel (empty)",
+              "request": { "method": "GET", "url": {"raw":"{{base_hotel_inventory}}/v1/hotels/ZZZ999/rooms","host":["{{base_hotel_inventory}}"],"path":["v1","hotels","ZZZ999","rooms"]} }
+            },
+            {
+              "name": "Agent Empty Message (still works)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"message\": \"hello\"\n}"}, "url": {"raw":"{{base_booking_assistant}}/v1/chat","host":["{{base_booking_assistant}}"],"path":["v1","chat"]} }
+            }
+          ]
+        },
+        {
+          "name": "10. Knowledge Graph Ingest & Search",
+          "description": "Ingest hotel data into Neo4j knowledge graph, then search using GraphRAG.",
+          "item": [
+            {
+              "name": "Step 1: Check KG Health",
+              "request": { "method": "GET", "url": {"raw":"{{base_knowledge_graph}}/healthz","host":["{{base_knowledge_graph}}"],"path":["healthz"]} }
+            },
+            {
+              "name": "Step 2: Ingest Hotels into Graph",
+              "request": { "method": "POST", "url": {"raw":"{{base_knowledge_graph}}/v1/admin/ingest","host":["{{base_knowledge_graph}}"],"path":["v1","admin","ingest"]} }
+            },
+            {
+              "name": "Step 3: Search - Luxury Hotels",
+              "request": { "method": "GET", "url": {"raw":"{{base_knowledge_graph}}/v1/search?query=luxury+five+star+hotel&limit=5","host":["{{base_knowledge_graph}}"],"path":["v1","search"],"query":[{"key":"query","value":"luxury five star hotel"},{"key":"limit","value":"5"}]} }
+            },
+            {
+              "name": "Step 4: Search - Family Friendly",
+              "request": { "method": "GET", "url": {"raw":"{{base_knowledge_graph}}/v1/search?query=family+friendly+hotel+near+ attractions&limit=5","host":["{{base_knowledge_graph}}"],"path":["v1","search"],"query":[{"key":"query","value":"family friendly hotel near attractions"},{"key":"limit","value":"5"}]} }
+            },
+            {
+              "name": "Step 5: Search - Budget Options",
+              "request": { "method": "GET", "url": {"raw":"{{base_knowledge_graph}}/v1/search?query=affordable+hotel+good+value&limit=5","host":["{{base_knowledge_graph}}"],"path":["v1","search"],"query":[{"key":"query","value":"affordable hotel good value"},{"key":"limit","value":"5"}]} }
+            },
+            {
+              "name": "Step 6: Index in RAG Pipeline",
+              "request": { "method": "POST", "url": {"raw":"{{base_rag_pipeline}}/v1/index/hotels","host":["{{base_rag_pipeline}}"],"path":["v1","index","hotels"]} }
+            },
+            {
+              "name": "Step 7: Semantic Search (RAG)",
+              "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"query\": \"peaceful hotel with spa and gym\",\n  \"limit\": 5\n}"}, "url": {"raw":"{{base_rag_pipeline}}/v1/search/hotels","host":["{{base_rag_pipeline}}"],"path":["v1","search","hotels"]} }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
