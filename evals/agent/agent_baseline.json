@@ -1,0 +1,62 @@
+{
+  "suite": "hotel-agent-smoke-v1",
+  "generated_at": "2026-10-30T18:26:40.208068+00:00",
+  "base_url": "http://localhost:8092",
+  "case_count": 3,
+  "passed_count": 2,
+  "pass_rate": 0.6667,
+  "all_cases_passed": false,
+  "limitations": [
+    "Three scenarios against the seeded catalog are not representative of production use.",
+    "Substring checks do not prove that every answer claim is supported by tool results.",
+    "CPU inference latency is local to this machine; do not compare it directly with cloud GPU serving."
+  ],
+  "cases": [
+    {
+      "id": "search_london_hotel",
+      "passed": false,
+      "tool_selection_pass": true,
+      "forbidden_tools_pass": true,
+      "answer_terms_pass": false,
+      "tools_used": [
+        "semantic_search_hotels",
+        "get_hotel",
+        "get_hotel",
+        "get_hotel"
+      ],
+      "session_id": "9a06b215-0198-48fa-b845-52d74462c3d5",
+      "interrupt_type": null,
+      "reply": "I couldn't complete that lookup just now. Please try again with a hotel name or location.",
+      "latency_ms": 49044.34,
+      "error": null
+    },
+    {
+      "id": "hotel_details_by_code",
+      "passed": true,
+      "tool_selection_pass": true,
+      "forbidden_tools_pass": true,
+      "answer_terms_pass": true,
+      "tools_used": [
+        "get_hotel"
+      ],
+      "session_id": "63deff3b-d750-4d9d-a49a-99f6139e14c9",
+      "interrupt_type": null,
+      "reply": "Hotel HTL002 is called **City Centre Suites**. \n\nIts street address is: **42 Oxford Street, London**",
+      "latency_ms": 17872.22,
+      "error": null
+    },
+    {
+      "id": "booking_missing_details",
+      "passed": true,
+      "tool_selection_pass": true,
+      "forbidden_tools_pass": true,
+      "answer_terms_pass": true,
+      "tools_used": [],
+      "session_id": "91717dac-4f26-4cd6-bd8b-c24048ddae67",
+      "interrupt_type": null,
+      "reply": "Hello! I'd be happy to help you book a London hotel. To proceed, I'll need some information from you:\n\n1. **Dates**: What are your check-in and check-out dates?\n2. **Room preference**: Do you have any specific room type in mind (e.g., standard, deluxe, suite), or would you like me to show you available options?\n3. **Guest details**: Could you provide your name, email address, and phone number for the booking?\n4. **Hotel preference**: Do you have a specific hotel in London you'd like, or would you prefer I search for hotels based on your criteria (e.g., near a certain area, with particular amenities)?\n\nOnce I have these details, I can help you find the perfect accommodation and complete your reservation!",
+      "latency_ms": 23979.17,
+      "error": null
+    }
+  ]
+}

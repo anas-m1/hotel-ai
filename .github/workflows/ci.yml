@@ -1,0 +1,180 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+jobs:
+  # ── Go services ─────────────────────────────────────────────────────────────
+  go-test:
+    name: Go — test & vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.12"
+          cache: true
+
+      - uses: sqlc-dev/setup-sqlc@v3
+        with:
+          sqlc-version: "1.31.1"
+
+      - name: Verify generated SQL bindings
+        run: |
+          (cd services/hotel-inventory && sqlc generate)
+          (cd services/booking-ops && sqlc generate)
+          git diff --exit-code -- services/hotel-inventory/internal/repository/db services/booking-ops/internal/repository/db
+
+      - name: go vet
+        run: go vet ./services/hotel-inventory/... ./services/booking-ops/...
+
+      - name: go test
+        run: go test ./services/hotel-inventory/... ./services/booking-ops/...
+
+  # ── Python services ──────────────────────────────────────────────────────────
+  python-lint:
+    name: Python — locked dependencies and lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - ai/llm-gateway
+          - ai/rag-pipeline
+          - ai/booking-assistant
+          - integrations/mcp/hotel-inventory
+          - integrations/mcp/booking-ops
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv==0.12.18
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: uv sync --locked
+
+      - name: Ruff lint
+        working-directory: ${{ matrix.service }}
+        run: uv run --locked ruff check src/
+
+      - name: Ruff format check
+        working-directory: ${{ matrix.service }}
+        run: uv run --locked ruff format --check src/
+
+  agent-tests:
+    name: Booking assistant — deterministic regressions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv==0.12.18
+      - name: Test from the locked service environment
+        run: uv run --locked --project ai/booking-assistant pytest ai/booking-assistant/tests/ -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test eval scoring and paired comparison
+        run: uv run --locked --project ai/booking-assistant python -m unittest discover -s evals/tests -v
+      - name: Test gateway provider routing without provider calls
+        run: uv run --locked --project ai/llm-gateway pytest ai/llm-gateway/tests/ -v
+      - name: Verify E2E is opt-in
+        run: uv run --locked --project ai/booking-assistant pytest tests/e2e/ -v
+
+  backend-integration:
+    name: Backend — temporary PostgreSQL integration
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.12"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install locked tooling and local test database binaries
+        run: |
+          pip install uv==0.12.18
+          sudo apt-get update
+          sudo apt-get install -y postgresql-16 postgresql-contrib
+      - name: Test SQL boundaries and the backend reservation lifecycle
+        run: python3 scripts/test-backend-isolated.py
+
+  # ── Docker build check ───────────────────────────────────────────────────────
+  docker-build:
+    name: Docker — build (no push)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: services/hotel-inventory
+            name: hotel-inventory
+          - service: services/booking-ops
+            name: booking-ops
+          - service: ai/llm-gateway
+            name: llm-gateway
+          - service: ai/rag-pipeline
+            name: rag-pipeline
+          - service: ai/booking-assistant
+            name: booking-assistant
+          - service: integrations/mcp/hotel-inventory
+            name: mcp-hotel-inventory
+          - service: integrations/mcp/booking-ops
+            name: mcp-booking-ops
+          - service: integrations/telegram-bot
+            name: hotel-ai-telegram-adapter
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service }}
+          push: false
+          tags: ${{ matrix.name }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  evals-image:
+    name: Docker — dashboard experiment webhook
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: evals/agent/Dockerfile
+          push: false
+          tags: hotel-agent-evals:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  secret-scan:
+    name: Credentials — working tree and Git history
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install checksum-verified Gitleaks and scan
+        shell: bash
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks_8.30.1_linux_x64.tar.gz" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          curl -fsSL -o "$RUNNER_TEMP/gitleaks_8.30.1_checksums.txt" https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt
+          (cd "$RUNNER_TEMP" && sha256sum --check --ignore-missing gitleaks_8.30.1_checksums.txt)
+          tar -xzf "$RUNNER_TEMP/gitleaks_8.30.1_linux_x64.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git . --redact --no-banner --log-opts=--all
+          "$RUNNER_TEMP/gitleaks" dir . --redact --no-banner

@@ -1,0 +1,12 @@
+#!/bin/bash
+# Creates additional databases beyond the default POSTGRES_DB.
+# Runs automatically on first container start via docker-entrypoint-initdb.d.
+set -euo pipefail
+
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    CREATE DATABASE booking_ops;
+    GRANT ALL PRIVILEGES ON DATABASE booking_ops TO $POSTGRES_USER;
+
+    CREATE DATABASE langfuse;
+    GRANT ALL PRIVILEGES ON DATABASE langfuse TO $POSTGRES_USER;
+EOSQL

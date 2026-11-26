@@ -1,0 +1,14 @@
+**
+!ai/
+!ai/booking-assistant/
+!ai/booking-assistant/pyproject.toml
+!ai/booking-assistant/uv.lock
+!ai/booking-assistant/src/
+!ai/booking-assistant/src/**
+!evals/
+!evals/agent/
+!evals/agent/*.py
+!evals/agent/*.json
+!evals/agent/evaluators/
+!evals/agent/evaluators/**
+**/__pycache__/
